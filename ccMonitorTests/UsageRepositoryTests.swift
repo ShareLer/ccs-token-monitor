@@ -63,4 +63,90 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(got[0].0, "a"); XCTAssertEqual(got[0].1, 4)
         XCTAssertEqual(got[1].0, "b"); XCTAssertEqual(got[1].1, 2)
     }
+
+    func test_fetchModelUsages_mergesMonthAndToday_sortedDesc() throws {
+        let cal = Calendar.current
+        let now = Date()
+        let month = DateWindows.thisMonth(now: now, calendar: cal)
+        let today = DateWindows.today(now: now, calendar: cal)
+        let monthOnlyTs = month.start + 60
+        let todayTs = today.start + 60
+        let path = try makeTempDB(rows: [
+            ("big",   monthOnlyTs, 1000, 0, 0, 0),
+            ("big",   todayTs,      500, 0, 0, 0),
+            ("small", monthOnlyTs,  100, 0, 0, 0),
+        ])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let repo = UsageRepository(dbPath: path)
+        let usages = try repo.fetchModelUsages(now: now, calendar: cal)
+
+        XCTAssertEqual(usages.count, 2)
+        XCTAssertEqual(usages[0].model, "big")
+        XCTAssertEqual(usages[0].monthInput, 1500)
+        XCTAssertEqual(usages[0].todayTotal, 500)
+        XCTAssertEqual(usages[1].model, "small")
+        XCTAssertEqual(usages[1].todayTotal, 0)
+    }
+
+    func test_fetchSummary_forWindow() throws {
+        let path = try makeTempDB(rows: [
+            ("a", 1000, 10, 20, 30, 40),
+            ("b", 1000, 1, 2, 3, 4),
+            ("c", 9_999_999_999, 999, 0, 0, 0),
+        ])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let repo = UsageRepository(dbPath: path)
+        let s = try repo.fetchSummary(window: DateWindow(start: 0, end: 2000))
+        XCTAssertEqual(s.input, 11)
+        XCTAssertEqual(s.output, 22)
+        XCTAssertEqual(s.cacheRead, 33)
+        XCTAssertEqual(s.cacheCreate, 44)
+    }
+
+    func test_fetchTrend_groupsByDayAndModel() throws {
+        let d1 = 1_780_000_000
+        let d2 = d1 + 86_400
+        let path = try makeTempDB(rows: [
+            ("a", d1, 5, 0, 0, 0),
+            ("a", d1, 5, 0, 0, 0),
+            ("b", d1, 1, 0, 0, 0),
+            ("a", d2, 7, 0, 0, 0),
+        ])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let repo = UsageRepository(dbPath: path)
+        let pts = try repo.fetchTrend(window: DateWindow(start: d1 - 10, end: d2 + 86_400))
+        let aDay1 = pts.first { $0.model == "a" && $0.total == 10 }
+        XCTAssertNotNil(aDay1)
+        XCTAssertGreaterThanOrEqual(pts.count, 3)
+    }
+
+    func test_fetchHeatmap_sumsPerDay() throws {
+        let d1 = 1_780_000_000
+        let path = try makeTempDB(rows: [
+            ("a", d1, 5, 5, 0, 0),
+            ("b", d1, 1, 1, 1, 1),
+        ])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let repo = UsageRepository(dbPath: path)
+        let days = try repo.fetchHeatmap(window: DateWindow(start: d1 - 10, end: d1 + 86_400))
+        XCTAssertEqual(days.count, 1)
+        XCTAssertEqual(days[0].total, 14)
+    }
+
+    func test_fetchDistinctModels_sorted() throws {
+        let path = try makeTempDB(rows: [
+            ("zeta", 1, 1, 0, 0, 0),
+            ("alpha", 2, 1, 0, 0, 0),
+            ("alpha", 3, 1, 0, 0, 0),
+        ])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let repo = UsageRepository(dbPath: path)
+        XCTAssertEqual(try repo.fetchDistinctModels(), ["alpha", "zeta"])
+    }
+
+    func test_missingDB_throwsNotCrash() {
+        let repo = UsageRepository(dbPath: "/nonexistent/x.db")
+        XCTAssertThrowsError(try repo.fetchSummary(window: DateWindow(start: 0, end: 1)))
+    }
 }
