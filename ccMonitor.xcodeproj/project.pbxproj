@@ -15,6 +15,7 @@
 		6CECACB40A119D0EF593B192 /* HeatmapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 908D086F1B17E10ED67D1DFC /* HeatmapView.swift */; };
 		72CDFE1B21A646B74ECA57D0 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6A363D17AC5A835A00DD21 /* DataStore.swift */; };
 		957208A9F94D9DCFDA0DF70E /* PricingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641D28D7A06898C09CE0CCBD /* PricingStore.swift */; };
+		9622CF639BCAA42312F549BC /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C39F2F3A16DFF2B68812F40D /* DashboardView.swift */; };
 		9D9F2C18D7E2F9760B8B5F1B /* TimeRangeSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67A6E4055DF2DDF5F13D6FD /* TimeRangeSelector.swift */; };
 		A4FA66140373C40E316035E8 /* DateWindowsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0652A385ED658CAA5CE47CB /* DateWindowsTests.swift */; };
 		B239E49782FB399DF952A36F /* PricingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C4EF82E79491C35B375A14 /* PricingTests.swift */; };
@@ -61,6 +62,7 @@
 		B4BF1AC92A4F819CFA6D3DBC /* SQLiteDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteDatabase.swift; sourceTree = "<group>"; };
 		B72676CA907F2238E88B688A /* TrendChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendChartView.swift; sourceTree = "<group>"; };
 		BDD291B3135AE2615ACBF82A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C39F2F3A16DFF2B68812F40D /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		E67A6E4055DF2DDF5F13D6FD /* TimeRangeSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeRangeSelector.swift; sourceTree = "<group>"; };
 		ECCE475913DF220B27F99452 /* ccMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ccMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDFC59DC26D40D3AC62EA763 /* Pricing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pricing.swift; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 		306C9A45AD7E4A106D6A187D /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				C39F2F3A16DFF2B68812F40D /* DashboardView.swift */,
 				908D086F1B17E10ED67D1DFC /* HeatmapView.swift */,
 				8AFD65721D1F602F0FB1F748 /* ModelListView.swift */,
 				BDD291B3135AE2615ACBF82A /* SettingsView.swift */,
@@ -255,6 +258,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9622CF639BCAA42312F549BC /* DashboardView.swift in Sources */,
 				72CDFE1B21A646B74ECA57D0 /* DataStore.swift in Sources */,
 				499D030563E427DD7449DA2C /* DateWindows.swift in Sources */,
 				E6F70463B0D1DE72A108AEBC /* Formatters.swift in Sources */,
