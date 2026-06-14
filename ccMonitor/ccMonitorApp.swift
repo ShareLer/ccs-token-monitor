@@ -2,5 +2,9 @@ import SwiftUI
 
 @main
 struct ccMonitorApp: App {
-    var body: some Scene { Settings { EmptyView() } }
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    var body: some Scene {
+        Settings { EmptyView() }
+    }
 }

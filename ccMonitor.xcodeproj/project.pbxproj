@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3004EF68DC67B70942BC75F2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB445B38AD672E47156FACCB /* AppDelegate.swift */; };
 		499D030563E427DD7449DA2C /* DateWindows.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7470E8C3E7DAD57775D5ED /* DateWindows.swift */; };
 		54FC880674DD477670006F88 /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4BF1AC92A4F819CFA6D3DBC /* SQLiteDatabase.swift */; };
 		5CCECC229058C5E9BFED96C2 /* TrendChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B72676CA907F2238E88B688A /* TrendChartView.swift */; };
@@ -67,6 +68,7 @@
 		ECCE475913DF220B27F99452 /* ccMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ccMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDFC59DC26D40D3AC62EA763 /* Pricing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pricing.swift; sourceTree = "<group>"; };
 		FA7E42D60A61E7AAB7345B8B /* FormattersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattersTests.swift; sourceTree = "<group>"; };
+		FB445B38AD672E47156FACCB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		FF7470E8C3E7DAD57775D5ED /* DateWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateWindows.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -157,6 +159,7 @@
 		BB248987CA0F6BE5494FC753 /* ccMonitor */ = {
 			isa = PBXGroup;
 			children = (
+				FB445B38AD672E47156FACCB /* AppDelegate.swift */,
 				4FC17AB1B273AF4A41A917D9 /* ccMonitorApp.swift */,
 				A2CCB2B7BCB29716841853CA /* Data */,
 				0944A1E50D6E6B724C8DD147 /* Models */,
@@ -258,6 +261,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3004EF68DC67B70942BC75F2 /* AppDelegate.swift in Sources */,
 				9622CF639BCAA42312F549BC /* DashboardView.swift in Sources */,
 				72CDFE1B21A646B74ECA57D0 /* DataStore.swift in Sources */,
 				499D030563E427DD7449DA2C /* DateWindows.swift in Sources */,
