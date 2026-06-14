@@ -47,17 +47,30 @@ struct DashboardView: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 10) {
             Text("Token 使用量监控").font(.system(size: 16, weight: .semibold))
             Spacer()
-            Button { Task { await store.refreshAll() } } label: {
-                Image(systemName: "arrow.clockwise")
-            }.buttonStyle(.plain).help("刷新")
+            // 倒计时：距下次自动刷新
+            if let next = store.nextRefreshAt {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let remaining = max(0, Int(next.timeIntervalSince(context.date).rounded(.up)))
+                    Text(countdownText(remaining))
+                        .font(.system(size: 11, weight: .medium).monospacedDigit())
+                        .foregroundColor(.secondary)
+                }
+            }
+            RefreshButton(isLoading: store.isLoading) {
+                Task { await store.refreshAll() }
+            }
             Button { showSettings = true } label: {
                 Image(systemName: "gearshape")
             }.buttonStyle(.plain).help("设置")
         }
         .padding(.horizontal, 20).padding(.vertical, 16)
+    }
+
+    private func countdownText(_ seconds: Int) -> String {
+        String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
     private var datePickerSheet: some View {
@@ -75,6 +88,32 @@ struct DashboardView: View {
             }
         }
         .padding(20).frame(width: 300)
+    }
+}
+
+/// 刷新按钮：刷新中图标持续旋转。
+private struct RefreshButton: View {
+    let isLoading: Bool
+    let action: () -> Void
+    @State private var angle: Double = 0
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.clockwise")
+                .rotationEffect(.degrees(angle))
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoading)
+        .help("刷新")
+        .onChange(of: isLoading) { loading in
+            if loading {
+                withAnimation(.linear(duration: 0.8).repeatForever(autoreverses: false)) {
+                    angle = 360
+                }
+            } else {
+                withAnimation(.linear(duration: 0.2)) { angle = 0 }
+            }
+        }
     }
 }
 

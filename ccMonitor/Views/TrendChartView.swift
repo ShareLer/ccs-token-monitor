@@ -1,10 +1,9 @@
 import SwiftUI
 
 /// ③ 最近30天用量趋势 — 自绘风格（参考 UsageBoard）：
-/// 彩色指标卡图例（可点击只看单条）+ 平滑曲线 + 浅色面积填充 + 网格 + 悬停十字线 tooltip。
+/// 平滑曲线 + 浅色面积填充 + 网格 + 悬停十字线 tooltip（无图例，靠颜色与悬停区分）。
 struct TrendChartView: View {
     let points: [TrendPoint]
-    @State private var selected: String?      // 选中的 series 名（nil = 全部）
 
     // MARK: 数据整形
 
@@ -48,12 +47,9 @@ struct TrendChartView: View {
         return out
     }
 
-    /// 当前可见曲线（按图例选择过滤）。
+    /// 当前可见曲线（非空）。
     private var visibleSeries: [Series] {
-        let nonEmpty = allSeries.filter { $0.values.contains { $0 > 0 } }
-        guard let selected else { return nonEmpty }
-        let only = nonEmpty.filter { $0.name == selected }
-        return only.isEmpty ? nonEmpty : only
+        allSeries.filter { $0.values.contains { $0 > 0 } }
     }
 
     var body: some View {
@@ -64,9 +60,8 @@ struct TrendChartView: View {
                 Text("暂无数据").font(.caption).foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center).padding(.vertical, 16)
             } else {
-                legend
                 LineChartPlot(days: days, series: visibleSeries.map { ($0.name, $0.color, $0.values) })
-                    .frame(height: 170)
+                    .frame(height: 180)
             }
         }
         .padding(16)
@@ -74,46 +69,6 @@ struct TrendChartView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
             .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5))
-    }
-
-    // MARK: 指标卡图例（可点击）
-
-    private var legend: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
-                  alignment: .leading, spacing: 8) {
-            ForEach(allSeries.filter { $0.values.contains { $0 > 0 } }) { s in
-                Button {
-                    selected = (selected == s.name) ? nil : s.name
-                } label: {
-                    metricCard(s)
-                }
-                .buttonStyle(.plain)
-                .help(selected == s.name ? "显示全部曲线" : "只看 \(s.name)")
-            }
-        }
-    }
-
-    private func metricCard(_ s: Series) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Circle().fill(s.color).frame(width: 7, height: 7)
-                Text(s.name).font(.system(size: 11.5)).foregroundColor(.secondary).lineLimit(1)
-            }
-            Text(formatTokens(s.total))
-                .font(.system(size: 16, weight: .bold)).monospacedDigit()
-                .foregroundColor(.primary).lineLimit(1).minimumScaleFactor(0.7)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8).padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(selected == s.name ? s.color.opacity(0.12) : Color(nsColor: .windowBackgroundColor).opacity(0.5))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(selected == s.name ? s.color.opacity(0.5) : Color.clear, lineWidth: 1)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 6))
     }
 
     private func palette(_ n: Int) -> Color {

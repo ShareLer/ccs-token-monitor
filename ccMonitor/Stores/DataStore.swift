@@ -9,6 +9,8 @@ final class DataStore: ObservableObject {
     @Published var heatmap: [HeatmapDay] = []
     @Published var loadError: String?
     @Published var isLoading = false
+    /// 下次自动刷新的时刻，供倒计时显示。每次刷新完成后重置。
+    @Published var nextRefreshAt: Date?
 
     @Published var selectedRange: TimeRange = .today {
         didSet { Task { await refreshSummary() } }
@@ -54,6 +56,11 @@ final class DataStore: ObservableObject {
         } catch {
             self.loadError = describe(error)
         }
+        // 无论成功失败，刷新完成即重启定时器，使倒计时与下次自动刷新对齐
+        // （手动刷新和自动刷新都经此处；仅在定时器已启动时才重启，避免初始 task 提前启动）
+        if timer != nil {
+            startTimer()
+        }
     }
 
     /// 仅刷新汇总（时间范围切换时）。
@@ -79,9 +86,15 @@ final class DataStore: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { await self?.refreshAll() }
         }
+        scheduleNext()
     }
 
-    func stopTimer() { timer?.invalidate(); timer = nil }
+    func stopTimer() { timer?.invalidate(); timer = nil; nextRefreshAt = nil }
+
+    /// 重置倒计时目标为 now + 刷新间隔。
+    private func scheduleNext() {
+        nextRefreshAt = Date().addingTimeInterval(TimeInterval(settings.refreshIntervalMinutes * 60))
+    }
 
     private func describe(_ error: Error) -> String {
         if case SQLiteError.openFailed = error {
