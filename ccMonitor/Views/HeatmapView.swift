@@ -9,6 +9,14 @@ struct HeatmapView: View {
     private let gap: CGFloat = 3
     private let scrollCell: CGFloat = 11   // scroll 模式固定格子边长
 
+    /// 鼠标即时悬停的格子（自绘 tooltip，替代有延迟的系统 .help）。
+    @State private var hover: HoverInfo?
+
+    private struct HoverInfo: Equatable {
+        let date: Date
+        let total: Int
+    }
+
     private var totalByDay: [String: Int] {
         let f = Self.dayFormatter
         return Dictionary(days.map { (f.string(from: $0.date), $0.total) }, uniquingKeysWith: +)
@@ -57,7 +65,16 @@ struct HeatmapView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Token活动").font(UB.Font.sectionTitle)
+            HStack {
+                Text("Token热力图").font(UB.Font.sectionTitle)
+                Spacer()
+                // 鼠标滑过格子即时显示（无系统 .help 延迟）
+                if let hover {
+                    Text("\(Self.dayFormatter.string(from: hover.date))  \(formatTokens(hover.total))")
+                        .font(.system(size: 11, weight: .medium)).monospacedDigit()
+                        .foregroundColor(.secondary)
+                }
+            }
             if fitMode == .fit {
                 // 用 GeometryReader 拿可用宽度，动态算格子边长铺满不滑动
                 GeometryReader { geo in
@@ -92,13 +109,33 @@ struct HeatmapView: View {
                             RoundedRectangle(cornerRadius: max(1, cell * 0.18))
                                 .fill(color(level(totalByDay[key] ?? 0)))
                                 .frame(width: cell, height: cell)
-                                .help("\(key): \(formatTokens(totalByDay[key] ?? 0))")
                         }
                     }
                 }
             }
+            // 鼠标滑过即时更新（网格自身坐标系内反算格子，顶部即时显示，无 .help 延迟）
+            .contentShape(Rectangle())
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let loc): hover = hitTest(loc, cell: cell)
+                case .ended: hover = nil
+                }
+            }
             monthLabels(cell: cell)
         }
+    }
+
+    /// 鼠标坐标 → 格子。超出格子区域返回 nil。
+    private func hitTest(_ loc: CGPoint, cell: CGFloat) -> HoverInfo? {
+        let step = cell + gap
+        let col = Int(loc.x / step)
+        let row = Int(loc.y / step)
+        guard col >= 0, col < grid.count, row >= 0, row < grid[col].count else { return nil }
+        // 落在格子之间的 gap 上则忽略
+        guard loc.x - CGFloat(col) * step <= cell, loc.y - CGFloat(row) * step <= cell else { return nil }
+        let date = grid[col][row]
+        let key = Self.dayFormatter.string(from: date)
+        return HoverInfo(date: date, total: totalByDay[key] ?? 0)
     }
 
     /// 月份标签：每列首日是月初（≤7号）时标出月份。

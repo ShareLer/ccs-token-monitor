@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		3004EF68DC67B70942BC75F2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB445B38AD672E47156FACCB /* AppDelegate.swift */; };
 		499D030563E427DD7449DA2C /* DateWindows.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7470E8C3E7DAD57775D5ED /* DateWindows.swift */; };
+		4F53CA6379FCB83C62599F24 /* Screenshotter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B505F4193DEC7CD6EBD41FC /* Screenshotter.swift */; };
 		54FC880674DD477670006F88 /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4BF1AC92A4F819CFA6D3DBC /* SQLiteDatabase.swift */; };
 		5CCECC229058C5E9BFED96C2 /* TrendChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B72676CA907F2238E88B688A /* TrendChartView.swift */; };
 		63E7536505C432B2F6EE72B5 /* UBTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D5C49B691313B03BFEB428 /* UBTokens.swift */; };
@@ -18,6 +19,7 @@
 		72CDFE1B21A646B74ECA57D0 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A6A363D17AC5A835A00DD21 /* DataStore.swift */; };
 		957208A9F94D9DCFDA0DF70E /* PricingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641D28D7A06898C09CE0CCBD /* PricingStore.swift */; };
 		9622CF639BCAA42312F549BC /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C39F2F3A16DFF2B68812F40D /* DashboardView.swift */; };
+		989B4F0717DB89B9BF312CED /* CacheRateLevelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE565B0F1424F5B57FDD9212 /* CacheRateLevelTests.swift */; };
 		9D9F2C18D7E2F9760B8B5F1B /* TimeRangeSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67A6E4055DF2DDF5F13D6FD /* TimeRangeSelector.swift */; };
 		A4FA66140373C40E316035E8 /* DateWindowsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0652A385ED658CAA5CE47CB /* DateWindowsTests.swift */; };
 		B239E49782FB399DF952A36F /* PricingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C4EF82E79491C35B375A14 /* PricingTests.swift */; };
@@ -32,6 +34,7 @@
 		E6F70463B0D1DE72A108AEBC /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445110865931D8327C8BD84E /* Formatters.swift */; };
 		F52F5E082DCE8FA47E5C3ECD /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 041AB3E63FEA8B44980BCE10 /* SettingsStore.swift */; };
 		F7FC7464D787EB1C13BDB50C /* UsageProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81B160B09BE733A1FCD260CF /* UsageProgressBar.swift */; };
+		FA460544E69B120972132625 /* SnapshotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A80C04E423FAA18D23FDD9 /* SnapshotView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,12 +49,14 @@
 
 /* Begin PBXFileReference section */
 		041AB3E63FEA8B44980BCE10 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
+		04A80C04E423FAA18D23FDD9 /* SnapshotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotView.swift; sourceTree = "<group>"; };
 		10C4EF82E79491C35B375A14 /* PricingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PricingTests.swift; sourceTree = "<group>"; };
 		284C0E0DD0643121EEC8FE24 /* ccMonitorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ccMonitorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		29FAC08B86F5EE317B1E790E /* UsageRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageRepository.swift; sourceTree = "<group>"; };
 		445110865931D8327C8BD84E /* Formatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatters.swift; sourceTree = "<group>"; };
 		4FC17AB1B273AF4A41A917D9 /* ccMonitorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ccMonitorApp.swift; sourceTree = "<group>"; };
 		5840D24369B22037DB0C3CEA /* UsageRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageRepositoryTests.swift; sourceTree = "<group>"; };
+		5B505F4193DEC7CD6EBD41FC /* Screenshotter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Screenshotter.swift; sourceTree = "<group>"; };
 		641D28D7A06898C09CE0CCBD /* PricingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PricingStore.swift; sourceTree = "<group>"; };
 		7A6A363D17AC5A835A00DD21 /* DataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStore.swift; sourceTree = "<group>"; };
 		81B160B09BE733A1FCD260CF /* UsageProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageProgressBar.swift; sourceTree = "<group>"; };
@@ -71,6 +76,7 @@
 		EDFC59DC26D40D3AC62EA763 /* Pricing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pricing.swift; sourceTree = "<group>"; };
 		FA7E42D60A61E7AAB7345B8B /* FormattersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattersTests.swift; sourceTree = "<group>"; };
 		FB445B38AD672E47156FACCB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		FE565B0F1424F5B57FDD9212 /* CacheRateLevelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheRateLevelTests.swift; sourceTree = "<group>"; };
 		FF7470E8C3E7DAD57775D5ED /* DateWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateWindows.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -102,6 +108,7 @@
 				908D086F1B17E10ED67D1DFC /* HeatmapView.swift */,
 				8AFD65721D1F602F0FB1F748 /* ModelListView.swift */,
 				BDD291B3135AE2615ACBF82A /* SettingsView.swift */,
+				04A80C04E423FAA18D23FDD9 /* SnapshotView.swift */,
 				B19E8EA4137BC15AC8201EBA /* SummaryView.swift */,
 				B72676CA907F2238E88B688A /* TrendChartView.swift */,
 				21D62C447FCF885F11A238C4 /* Components */,
@@ -112,6 +119,7 @@
 		34B077AC36A90196583BAEA9 /* ccMonitorTests */ = {
 			isa = PBXGroup;
 			children = (
+				FE565B0F1424F5B57FDD9212 /* CacheRateLevelTests.swift */,
 				A0652A385ED658CAA5CE47CB /* DateWindowsTests.swift */,
 				FA7E42D60A61E7AAB7345B8B /* FormattersTests.swift */,
 				B2D848A863501766BC6A53E2 /* PlaceholderTests.swift */,
@@ -166,10 +174,19 @@
 				4FC17AB1B273AF4A41A917D9 /* ccMonitorApp.swift */,
 				A2CCB2B7BCB29716841853CA /* Data */,
 				0944A1E50D6E6B724C8DD147 /* Models */,
+				EEC03E4D9DAEB91B3300DBDE /* Services */,
 				ACAB4D9899684A51BA4B369E /* Stores */,
 				306C9A45AD7E4A106D6A187D /* Views */,
 			);
 			path = ccMonitor;
+			sourceTree = "<group>";
+		};
+		EEC03E4D9DAEB91B3300DBDE /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				5B505F4193DEC7CD6EBD41FC /* Screenshotter.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -252,6 +269,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				989B4F0717DB89B9BF312CED /* CacheRateLevelTests.swift in Sources */,
 				A4FA66140373C40E316035E8 /* DateWindowsTests.swift in Sources */,
 				C94A5D7C1359506C7C584CC6 /* FormattersTests.swift in Sources */,
 				C6F7D760206E578EC2788659 /* PlaceholderTests.swift in Sources */,
@@ -274,8 +292,10 @@
 				C659118F1C52BDB8A0AE3F3D /* Pricing.swift in Sources */,
 				957208A9F94D9DCFDA0DF70E /* PricingStore.swift in Sources */,
 				54FC880674DD477670006F88 /* SQLiteDatabase.swift in Sources */,
+				4F53CA6379FCB83C62599F24 /* Screenshotter.swift in Sources */,
 				F52F5E082DCE8FA47E5C3ECD /* SettingsStore.swift in Sources */,
 				C480F9F5785088C97416DE3C /* SettingsView.swift in Sources */,
+				FA460544E69B120972132625 /* SnapshotView.swift in Sources */,
 				BD8B9D26C628249FAB5D9880 /* SummaryView.swift in Sources */,
 				9D9F2C18D7E2F9760B8B5F1B /* TimeRangeSelector.swift in Sources */,
 				5CCECC229058C5E9BFED96C2 /* TrendChartView.swift in Sources */,

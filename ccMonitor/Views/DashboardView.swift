@@ -3,10 +3,24 @@ import SwiftUI
 struct DashboardView: View {
     @ObservedObject var store: DataStore
     @ObservedObject var settings: SettingsStore
-    @State private var showSettings = false
     @State private var showDatePicker = false
     @State private var customStart = Date()
     @State private var customEnd = Date()
+    @State private var screenshotAlert: ScreenshotAlert?
+
+    /// 截图结果提示。
+    private enum ScreenshotAlert: Identifiable {
+        case needsDir                 // 未设置保存目录
+        case saved(String)            // 成功，附文件名
+        case failed(String)           // 失败，附原因
+        var id: String {
+            switch self {
+            case .needsDir: return "needsDir"
+            case .saved(let s): return "saved-\(s)"
+            case .failed(let s): return "failed-\(s)"
+            }
+        }
+    }
 
     init(store: DataStore) {
         self.store = store
@@ -18,6 +32,7 @@ struct DashboardView: View {
             header
                 .background(UB.Canvas.barBackground)
             Divider()
+            // 内容整体可滚：模型用量 + 总Token + 趋势图 + 热力图。
             ScrollView {
                 VStack(spacing: UB.Spacing.xl) {
                     if let err = store.loadError {
@@ -34,15 +49,29 @@ struct DashboardView: View {
                 .padding(UB.Spacing.xxl)
             }
         }
-        .frame(width: 420)
-        .frame(maxHeight: 640)
+        .frame(width: 420, height: 840)
         .background(UB.Canvas.canvasBackground)
-        .sheet(isPresented: $showSettings) {
-            SettingsView(settings: store.settings, pricing: store.pricing,
-                         onSaved: { showSettings = false; Task { await store.refreshAll() } })
-        }
         .sheet(isPresented: $showDatePicker) {
             datePickerSheet
+        }
+        .alert(item: $screenshotAlert) { alert in
+            switch alert {
+            case .needsDir:
+                return Alert(title: Text("请先设置保存目录"),
+                             message: Text("截图需要指定保存位置，请在设置中选择截图保存目录。"),
+                             primaryButton: .default(Text("去设置")) {
+                                 NotificationCenter.default.post(name: .openSettings, object: nil)
+                             },
+                             secondaryButton: .cancel(Text("取消")))
+            case .saved(let name):
+                return Alert(title: Text("截图已保存"),
+                             message: Text(name),
+                             dismissButton: .default(Text("好")))
+            case .failed(let reason):
+                return Alert(title: Text("截图失败"),
+                             message: Text(reason),
+                             dismissButton: .default(Text("好")))
+            }
         }
         .task { await store.refreshAll() }
     }
@@ -63,7 +92,10 @@ struct DashboardView: View {
             RefreshButton(isLoading: store.isLoading) {
                 Task { await store.refreshAll() }
             }
-            IconButton(systemName: "gearshape", help: "设置") { showSettings = true }
+            IconButton(systemName: "camera", help: "截图") { takeScreenshot() }
+            IconButton(systemName: "gearshape", help: "设置") {
+                NotificationCenter.default.post(name: .openSettings, object: nil)
+            }
             IconButton(systemName: "power", help: "退出") { NSApp.terminate(nil) }
         }
         .padding(.horizontal, UB.Spacing.xxl).padding(.vertical, UB.Spacing.xl)
@@ -71,6 +103,28 @@ struct DashboardView: View {
 
     private func countdownText(_ seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+
+    /// 截图：渲染完整内容长图保存到设置目录。未设目录则提醒。
+    private func takeScreenshot() {
+        let dir = settings.screenshotDir
+        guard !dir.isEmpty else { screenshotAlert = .needsDir; return }
+
+        let snapshot = SnapshotView(
+            modelUsages: store.modelUsages,
+            pricing: store.pricing,
+            summary: store.summary,
+            selectedRange: store.selectedRange,
+            trend: store.trend,
+            heatmap: store.heatmap,
+            heatmapFitMode: settings.heatmapFitMode
+        )
+        do {
+            let url = try Screenshotter.save(snapshot, toDirectory: dir)
+            screenshotAlert = .saved(url.lastPathComponent)
+        } catch {
+            screenshotAlert = .failed(error.localizedDescription)
+        }
     }
 
     private var datePickerSheet: some View {

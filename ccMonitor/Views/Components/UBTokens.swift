@@ -1,5 +1,18 @@
 import SwiftUI
 
+/// 缓存率分档（纯逻辑，不依赖配色，便于单测边界）。
+/// 阈值：<80% low，80~95% medium，>=95% high。边界 80→medium、95→high。
+enum CacheRateLevel {
+    case low, medium, high
+
+    static func from(fraction: Double) -> CacheRateLevel {
+        let pct = fraction * 100
+        if pct < 80 { return .low }
+        if pct < 95 { return .medium }
+        return .high
+    }
+}
+
 /// 设计 token 体系（参考 UsageBoard），统一间距/圆角/字体/配色。
 enum UB {
     enum Spacing {
@@ -45,6 +58,21 @@ enum UB {
         static let accent = Color(hex: 0x2196F3)        // 主蓝
         static let cache = Color(hex: 0xFFC107)         // 缓存（琥珀）
         static let cost = Color(hex: 0x4CAF50)          // 成本（绿）
+
+        // 缓存率分档色：<80 浅红、80~95 黄、>=95 绿
+        static let cacheLow = Color(hex: 0xEF9A9A)      // 浅红
+        static let cacheMid = Color(hex: 0xFFC107)      // 黄（琥珀）
+        static let cacheHigh = Color(hex: 0x4CAF50)     // 绿
+
+        /// 按缓存率 fraction(0...1) 取分档色。
+        static func cacheRateColor(_ fraction: Double) -> Color {
+            switch CacheRateLevel.from(fraction: fraction) {
+            case .low: return cacheLow
+            case .medium: return cacheMid
+            case .high: return cacheHigh
+            }
+        }
+
         /// 折线/多模型区分色
         static let series: [Color] = [.blue, .green, .orange, .purple, .pink,
                                       .teal, .red, .indigo, .mint, .cyan, .yellow]

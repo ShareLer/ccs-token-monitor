@@ -13,6 +13,7 @@ final class SettingsStore: ObservableObject {
         static let dbPath = "dbPath"
         static let refreshInterval = "refreshIntervalMinutes"
         static let heatmapFitMode = "heatmapFitMode"
+        static let screenshotDir = "screenshotDir"
     }
 
     static var defaultDBPath: String {
@@ -30,11 +31,16 @@ final class SettingsStore: ObservableObject {
     @Published var heatmapFitMode: HeatmapFitMode {
         didSet { defaults.set(heatmapFitMode.rawValue, forKey: Keys.heatmapFitMode) }
     }
+    /// 截图保存目录（空 = 未设置，截图时提醒用户先设置）
+    @Published var screenshotDir: String {
+        didSet { defaults.set(screenshotDir, forKey: Keys.screenshotDir) }
+    }
 
     init() {
         self.dbPath = defaults.string(forKey: Keys.dbPath) ?? SettingsStore.defaultDBPath
         let saved = defaults.integer(forKey: Keys.refreshInterval)
         self.refreshIntervalMinutes = saved == 0 ? 5 : saved
         self.heatmapFitMode = HeatmapFitMode(rawValue: defaults.string(forKey: Keys.heatmapFitMode) ?? "") ?? .fit
+        self.screenshotDir = defaults.string(forKey: Keys.screenshotDir) ?? ""
     }
 }

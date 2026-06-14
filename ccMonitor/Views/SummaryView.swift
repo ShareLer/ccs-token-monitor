@@ -26,7 +26,7 @@ struct SummaryView: View {
             UsageProgressBar(
                 fraction: summary.cacheRate,
                 text: "缓存率: \(formatCacheRate(summary.cacheRate))",
-                tint: UB.Palette.cache
+                tint: UB.Palette.cacheRateColor(summary.cacheRate)
             )
         }
         .ubCard()
