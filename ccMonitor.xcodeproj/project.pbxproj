@@ -7,8 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		499D030563E427DD7449DA2C /* DateWindows.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7470E8C3E7DAD57775D5ED /* DateWindows.swift */; };
 		6837C39623DE40029B6DF4D2 /* UsageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB23E69852C59F66733972F0 /* UsageModels.swift */; };
 		6CBFE152B555E35765DCB63B /* ccMonitorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FC17AB1B273AF4A41A917D9 /* ccMonitorApp.swift */; };
+		A4FA66140373C40E316035E8 /* DateWindowsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0652A385ED658CAA5CE47CB /* DateWindowsTests.swift */; };
 		B239E49782FB399DF952A36F /* PricingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C4EF82E79491C35B375A14 /* PricingTests.swift */; };
 		C659118F1C52BDB8A0AE3F3D /* Pricing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDFC59DC26D40D3AC62EA763 /* Pricing.swift */; };
 		C6F7D760206E578EC2788659 /* PlaceholderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D848A863501766BC6A53E2 /* PlaceholderTests.swift */; };
@@ -31,11 +33,13 @@
 		284C0E0DD0643121EEC8FE24 /* ccMonitorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ccMonitorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		445110865931D8327C8BD84E /* Formatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatters.swift; sourceTree = "<group>"; };
 		4FC17AB1B273AF4A41A917D9 /* ccMonitorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ccMonitorApp.swift; sourceTree = "<group>"; };
+		A0652A385ED658CAA5CE47CB /* DateWindowsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateWindowsTests.swift; sourceTree = "<group>"; };
 		AB23E69852C59F66733972F0 /* UsageModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageModels.swift; sourceTree = "<group>"; };
 		B2D848A863501766BC6A53E2 /* PlaceholderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceholderTests.swift; sourceTree = "<group>"; };
 		ECCE475913DF220B27F99452 /* ccMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ccMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDFC59DC26D40D3AC62EA763 /* Pricing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pricing.swift; sourceTree = "<group>"; };
 		FA7E42D60A61E7AAB7345B8B /* FormattersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattersTests.swift; sourceTree = "<group>"; };
+		FF7470E8C3E7DAD57775D5ED /* DateWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateWindows.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -67,6 +71,7 @@
 		34B077AC36A90196583BAEA9 /* ccMonitorTests */ = {
 			isa = PBXGroup;
 			children = (
+				A0652A385ED658CAA5CE47CB /* DateWindowsTests.swift */,
 				FA7E42D60A61E7AAB7345B8B /* FormattersTests.swift */,
 				B2D848A863501766BC6A53E2 /* PlaceholderTests.swift */,
 				10C4EF82E79491C35B375A14 /* PricingTests.swift */,
@@ -92,10 +97,19 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		A2CCB2B7BCB29716841853CA /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				FF7470E8C3E7DAD57775D5ED /* DateWindows.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
 		BB248987CA0F6BE5494FC753 /* ccMonitor */ = {
 			isa = PBXGroup;
 			children = (
 				4FC17AB1B273AF4A41A917D9 /* ccMonitorApp.swift */,
+				A2CCB2B7BCB29716841853CA /* Data */,
 				0944A1E50D6E6B724C8DD147 /* Models */,
 				306C9A45AD7E4A106D6A187D /* Views */,
 			);
@@ -182,6 +196,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A4FA66140373C40E316035E8 /* DateWindowsTests.swift in Sources */,
 				C94A5D7C1359506C7C584CC6 /* FormattersTests.swift in Sources */,
 				C6F7D760206E578EC2788659 /* PlaceholderTests.swift in Sources */,
 				B239E49782FB399DF952A36F /* PricingTests.swift in Sources */,
@@ -192,6 +207,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				499D030563E427DD7449DA2C /* DateWindows.swift in Sources */,
 				E6F70463B0D1DE72A108AEBC /* Formatters.swift in Sources */,
 				C659118F1C52BDB8A0AE3F3D /* Pricing.swift in Sources */,
 				6837C39623DE40029B6DF4D2 /* UsageModels.swift in Sources */,
