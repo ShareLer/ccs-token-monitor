@@ -14,7 +14,7 @@
 
 ## 前置约束（务必先读）
 
-- **Xcode license 未同意**：当前 `swift`/`xcodebuild` 会报 license 错误。Task 0 解决。
+- **环境已就绪**：Xcode license 已同意，XcodeGen 已安装（见 Task 0）。项目用 XcodeGen 从 `project.yml` 生成，**每次新增 .swift 文件后需重跑 `xcodegen generate`**。
 - **数据层走 TDD**（纯逻辑，用 XCTest + 临时 SQLite 严格测试）；**UI 层用 SwiftUI Preview 目视验证**，不写脆弱 UI 单测。
 - **时间窗端点在 Swift 侧用 `Calendar` 计算**为 Unix 秒，SQL 只用 `:start`/`:end` 参数过滤。
 - 数据库 `created_at` 是**秒级 Unix 时间戳**；四类 token 字段 `input_tokens/output_tokens/cache_read_tokens/cache_creation_tokens`。
@@ -64,63 +64,121 @@ ccMonitorTests/                  # Unit Test target
 
 ---
 
-## Task 0: 同意 Xcode license（前置，用户执行）
+## Task 0: 前置环境（已就绪，确认即可）
 
-**这一步需要 sudo 和交互，必须由你本人在终端执行，不能由 agent 代劳。**
+- [x] **Step 1: Xcode license** — 已同意（`swift --version` 正常输出 Swift 6.3.2）。
+- [x] **Step 2: XcodeGen** — 已 `brew install xcodegen`。
 
-- [ ] **Step 1: 在会话中执行 license 同意**
-
-在 Claude Code 输入框输入（`!` 前缀让命令在本会话运行）：
-
-```
-! sudo xcodebuild -license accept
-```
-
-或在普通终端运行 `sudo xcodebuild -license`，翻到底部输入 `agree`。
-
-- [ ] **Step 2: 验证工具链可用**
-
-Run: `swift --version`
-Expected: 正常输出 Swift 版本号（不再报 license 错误）。
+确认命令：
+Run: `swift --version && xcodegen --version`
+Expected: 两者均正常输出版本号。
 
 ---
 
-## Task 1: 创建 Xcode 项目骨架
+## Task 1: 用 XcodeGen 声明式生成项目骨架
 
-`.xcodeproj` 是二进制格式，手写易错。用 Xcode GUI 创建最可靠。
+用 `project.yml` 声明项目，`xcodegen` 生成 `.xcodeproj`。优点：纳入 git 可复现、subagent 可全自动 `xcodebuild`。生成的 `.xcodeproj` 照样能在 Xcode 打开预览。
 
-- [ ] **Step 1: 新建 macOS App 项目**
+> **前置**：已 `brew install xcodegen`（验证 `xcodegen --version`）。源码目录用占位文件先建好，否则 XcodeGen 因空目录报错。
 
-1. 打开 Xcode → File → New → Project → macOS → **App** → Next。
-2. Product Name: `ccMonitor`；Interface: **SwiftUI**；Language: **Swift**；勾选 **Include Tests**。
-3. 保存到 `/Users/didi/Documents/codes/vibe_project/ccs-moniter/`（与 CLAUDE.md/ref.html 同级）。
+- [ ] **Step 1: 写 project.yml**
 
-- [ ] **Step 2: 配置为菜单栏 app（LSUIElement）**
+```yaml
+# project.yml
+name: ccMonitor
+options:
+  bundleIdPrefix: com.ccmonitor
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    PRODUCT_BUNDLE_IDENTIFIER: com.ccmonitor.app
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_LSUIElement: YES          # 菜单栏 app，无 Dock 图标
+    INFOPLIST_KEY_NSHumanReadableCopyright: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  ccMonitor:
+    type: application
+    platform: macOS
+    sources:
+      - path: ccMonitor
+    settings:
+      base:
+        OTHER_LDFLAGS: "-lsqlite3"          # 链接系统 SQLite
+  ccMonitorTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: ccMonitorTests
+    dependencies:
+      - target: ccMonitor
+    settings:
+      base:
+        OTHER_LDFLAGS: "-lsqlite3"
+schemes:
+  ccMonitor:
+    build:
+      targets:
+        ccMonitor: all
+        ccMonitorTests: [test]
+    test:
+      targets:
+        - ccMonitorTests
+    run:
+      config: Debug
+```
 
-打开 `ccMonitor/Info.plist`（或 target → Info 标签），新增一行：
-- Key: `Application is agent (UIElement)`（`LSUIElement`）→ Value: `YES`
+- [ ] **Step 2: 建占位源文件（XcodeGen 不接受空目录）**
 
-若项目用的是 target 的 Info 配置而无 Info.plist 文件，在 target → Build Settings 搜索 `Info.plist`，或在 Info 标签页 + 号添加 `Application is agent (UIElement)` = YES。
+```bash
+mkdir -p ccMonitor ccMonitorTests
+# 临时入口占位，Task 16 会替换
+cat > ccMonitor/ccMonitorApp.swift <<'EOF'
+import SwiftUI
 
-- [ ] **Step 3: 设最低部署版本 macOS 13.0**
+@main
+struct ccMonitorApp: App {
+    var body: some Scene { Settings { EmptyView() } }
+}
+EOF
+# 占位测试，Task 2 起逐个替换/新增
+cat > ccMonitorTests/PlaceholderTests.swift <<'EOF'
+import XCTest
+final class PlaceholderTests: XCTestCase {
+    func test_placeholder() { XCTAssertTrue(true) }
+}
+EOF
+```
 
-target → General → Minimum Deployments → macOS **13.0**（Swift Charts 要求 13+）。
+- [ ] **Step 3: 生成 .xcodeproj**
 
-- [ ] **Step 4: 链接 libsqlite3**
+Run: `xcodegen generate`
+Expected: 输出 `Created project at ...ccMonitor.xcodeproj`。
 
-target → General → Frameworks, Libraries, and Embedded Content → + → 搜索 `libsqlite3.tbd` → 添加。
-
-- [ ] **Step 5: 验证空项目能编译**
+- [ ] **Step 4: 验证骨架能编译**
 
 Run: `xcodebuild -project ccMonitor.xcodeproj -scheme ccMonitor -destination 'platform=macOS' build`
 Expected: `BUILD SUCCEEDED`。
 
+- [ ] **Step 5: 验证占位测试能跑**
+
+Run: `xcodebuild test -project ccMonitor.xcodeproj -scheme ccMonitor -destination 'platform=macOS'`
+Expected: `TEST SUCCEEDED`（PlaceholderTests 通过）。
+
 - [ ] **Step 6: 提交**
 
 ```bash
-git add -A
-git commit -m "chore: 初始化 ccMonitor Xcode 项目骨架(菜单栏 app)"
+git add project.yml ccMonitor ccMonitorTests
+git commit -m "chore: XcodeGen 声明式生成 ccMonitor 项目骨架(菜单栏 app)"
 ```
+
+> **后续维护**：每次新增 .swift 文件后，需重跑 `xcodegen generate` 让文件进项目（XcodeGen 按目录扫描，无需手动拖文件）。各任务的"提交"前都隐含这一步——若新建了文件，先 `xcodegen generate` 再 `xcodebuild`。
 
 ---
 
