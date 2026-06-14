@@ -50,8 +50,8 @@ struct DashboardView: View {
         HStack(spacing: 10) {
             Text("Token 使用量监控").font(.system(size: 16, weight: .semibold))
             Spacer()
-            // 倒计时：距下次自动刷新
-            if let next = store.nextRefreshAt {
+            // 倒计时：距下次自动刷新（加载中不显示，让位给转圈）
+            if let next = store.nextRefreshAt, !store.isLoading {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let remaining = max(0, Int(next.timeIntervalSince(context.date).rounded(.up)))
                     Text(countdownText(remaining))
@@ -70,7 +70,7 @@ struct DashboardView: View {
     }
 
     private func countdownText(_ seconds: Int) -> String {
-        String(format: "%d:%02d", seconds / 60, seconds % 60)
+        String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 
     private var datePickerSheet: some View {
@@ -91,28 +91,25 @@ struct DashboardView: View {
     }
 }
 
-/// 刷新按钮：刷新中图标持续旋转。
+/// 刷新按钮：加载中用 macOS 原生 ProgressView 替换图标（参考 UsageBoard，比图标自转更地道）。
 private struct RefreshButton: View {
     let isLoading: Bool
     let action: () -> Void
-    @State private var angle: Double = 0
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: "arrow.clockwise")
-                .rotationEffect(.degrees(angle))
-        }
-        .buttonStyle(.plain)
-        .disabled(isLoading)
-        .help("刷新")
-        .onChange(of: isLoading) { loading in
-            if loading {
-                withAnimation(.linear(duration: 0.8).repeatForever(autoreverses: false)) {
-                    angle = 360
-                }
-            } else {
-                withAnimation(.linear(duration: 0.2)) { angle = 0 }
+        if isLoading {
+            ProgressView()
+                .controlSize(.small)
+                .frame(width: 20, height: 20)
+        } else {
+            Button(action: action) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: 20, height: 20)
             }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help("刷新")
         }
     }
 }
