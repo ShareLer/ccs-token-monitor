@@ -17,7 +17,7 @@ struct SnapshotView: View {
     var body: some View {
         VStack(spacing: UB.Spacing.xl) {
             HStack {
-                Text("Token 使用量监控").font(UB.Font.popoverTitle)
+                Text("CCS Token Monitor").font(UB.Font.popoverTitle)
                 Spacer()
             }
             ModelListView(usages: modelUsages, pricing: pricing)

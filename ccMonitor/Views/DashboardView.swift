@@ -78,7 +78,7 @@ struct DashboardView: View {
 
     private var header: some View {
         HStack(spacing: UB.Spacing.m) {
-            Text("Token 使用量监控").font(UB.Font.popoverTitle)
+            Text("CCS Token Monitor").font(UB.Font.popoverTitle)
             Spacer()
             // 倒计时：距下次自动刷新（加载中不显示，让位给转圈）
             if let next = store.nextRefreshAt, !store.isLoading {
