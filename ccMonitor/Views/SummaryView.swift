@@ -25,7 +25,7 @@ struct SummaryView: View {
 
                 UsageProgressBar(
                     fraction: summary.cacheRate,
-                    text: "缓存率: \(formatPercent(summary.cacheRate))",
+                    text: "缓存率: \(formatCacheRate(summary.cacheRate))",
                     height: 12,
                     gradient: LinearGradient(colors: [Color(hex: 0xFFC107), Color(hex: 0xFFA000)],
                                              startPoint: .leading, endPoint: .trailing)

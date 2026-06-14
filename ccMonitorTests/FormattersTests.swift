@@ -23,4 +23,21 @@ final class FormattersTests: XCTestCase {
     func test_formatPercent() {
         XCTAssertEqual(formatPercent(0.2345), "23%")
     }
+
+    // 缓存率保留 1 位小数，避免 99.92% 被四舍五入显示成 100%（误导）
+    func test_formatCacheRate_keepsOneDecimal() {
+        XCTAssertEqual(formatCacheRate(0.9992), "99.9%")
+    }
+    func test_formatCacheRate_notRoundedTo100() {
+        // 关键回归：99.92% 不能显示成 100%
+        XCTAssertNotEqual(formatCacheRate(0.9992), "100%")
+        XCTAssertNotEqual(formatCacheRate(0.9992), "100.0%")
+    }
+    func test_formatCacheRate_real100() {
+        // input=0 时确实是 100%
+        XCTAssertEqual(formatCacheRate(1.0), "100.0%")
+    }
+    func test_formatCacheRate_zero() {
+        XCTAssertEqual(formatCacheRate(0), "0.0%")
+    }
 }

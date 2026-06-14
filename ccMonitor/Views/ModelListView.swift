@@ -13,7 +13,7 @@ struct ModelListView: View {
                         Text(u.model)
                             .font(.system(size: 13, weight: .medium))
                         Spacer()
-                        Text("缓存率: \(formatPercent(u.cacheRate))")
+                        Text("缓存率: \(formatCacheRate(u.cacheRate))")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Color(hex: 0xFFC107))
                         Text("成本: \(formatCost(u.cost(with: pricing.pricing(for: u.model))))")
