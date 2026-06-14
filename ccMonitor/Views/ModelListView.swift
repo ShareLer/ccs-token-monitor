@@ -6,8 +6,12 @@ struct ModelListView: View {
     let pricing: PricingStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(usages.enumerated()), id: \.element.id) { index, u in
+        let shown = ModelUsage.topFive(from: usages)
+        return VStack(alignment: .leading, spacing: 0) {
+            Text("模型用量明细")
+                .font(UB.Font.sectionTitle)
+                .padding(.bottom, UB.Spacing.xl)
+            ForEach(Array(shown.enumerated()), id: \.element.id) { index, u in
                 if index > 0 {
                     Divider().padding(.vertical, UB.Spacing.l)
                 }

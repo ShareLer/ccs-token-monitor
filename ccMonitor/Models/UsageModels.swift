@@ -25,6 +25,27 @@ struct ModelUsage: Identifiable, Equatable {
          + Double(monthCacheRead) * p.cacheRead
          + Double(monthCacheCreate) * p.cacheCreate) / 1_000_000
     }
+
+    /// 模型列表展示筛选：月用量 Top3 + 日用量 Top2，去重；不足 5 个时按月用量降序递补，固定最多 5 个。
+    static func topFive(from all: [ModelUsage]) -> [ModelUsage] {
+        let byMonth = all.sorted { $0.monthTotal > $1.monthTotal }
+        let byToday = all.sorted { $0.todayTotal > $1.todayTotal }
+
+        var result: [ModelUsage] = []
+        var picked = Set<String>()
+        func add(_ u: ModelUsage) {
+            guard !picked.contains(u.model) else { return }
+            picked.insert(u.model)
+            result.append(u)
+        }
+
+        byMonth.prefix(3).forEach(add)              // 月 Top3
+        byToday.prefix(2).forEach(add)              // 日 Top2（去重）
+        if result.count < 5 {                       // 不足 5 个：按月用量递补
+            for u in byMonth where result.count < 5 { add(u) }
+        }
+        return Array(result.prefix(5))
+    }
 }
 
 /// ② 汇总区，跟随时间范围，不分模型。

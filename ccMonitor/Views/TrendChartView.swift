@@ -54,7 +54,7 @@ struct TrendChartView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("最近30天用量趋势").font(UB.Font.sectionTitle)
+            Text("近30日趋势").font(UB.Font.sectionTitle)
 
             if days.isEmpty {
                 Text("暂无数据").font(.caption).foregroundColor(.secondary)

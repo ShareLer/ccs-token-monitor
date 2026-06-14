@@ -48,4 +48,58 @@ final class PricingTests: XCTestCase {
         let back = try JSONDecoder().decode(ModelPricing.self, from: data)
         XCTAssertEqual(back, p)
     }
+
+    // MARK: topFive 筛选（月Top3 + 日Top2，去重递补到5个）
+
+    /// 构造一个 ModelUsage：月总量靠 monthInput 控制，日总量靠 todayTotal。
+    private func mu(_ name: String, month: Int, today: Int) -> ModelUsage {
+        ModelUsage(model: name, monthInput: month, monthOutput: 0,
+                   monthCacheRead: 0, monthCacheCreate: 0, todayTotal: today)
+    }
+
+    func test_topFive_monthTop3_plus_dayTop2_noOverlap() {
+        // 月降序: A,B,C,D,E,F  日降序: F,E,...
+        let all = [
+            mu("A", month: 600, today: 1),
+            mu("B", month: 500, today: 2),
+            mu("C", month: 400, today: 3),
+            mu("D", month: 300, today: 10),  // 不在月Top3
+            mu("E", month: 200, today: 50),  // 日第2高
+            mu("F", month: 100, today: 90),  // 日第1高
+        ]
+        let top = ModelUsage.topFive(from: all)
+        // 月Top3: A,B,C；日Top2: F,E → 共5个，无重叠
+        XCTAssertEqual(top.map(\.model), ["A", "B", "C", "F", "E"])
+    }
+
+    func test_topFive_overlap_backfillsFromMonth() {
+        // 日Top2 与月Top3 重叠时，从月用量递补
+        let all = [
+            mu("A", month: 600, today: 100), // 月1 且 日1（重叠）
+            mu("B", month: 500, today: 90),  // 月2 且 日2（重叠）
+            mu("C", month: 400, today: 1),
+            mu("D", month: 300, today: 2),
+            mu("E", month: 200, today: 3),
+        ]
+        let top = ModelUsage.topFive(from: all)
+        // 月Top3: A,B,C；日Top2: A,B 全重叠 → 从月递补 D,E → A,B,C,D,E
+        XCTAssertEqual(top.map(\.model), ["A", "B", "C", "D", "E"])
+    }
+
+    func test_topFive_fewerThanFive_returnsAll() {
+        let all = [mu("A", month: 3, today: 1), mu("B", month: 2, today: 1)]
+        let top = ModelUsage.topFive(from: all)
+        XCTAssertEqual(Set(top.map(\.model)), ["A", "B"])
+        XCTAssertEqual(top.count, 2)
+    }
+
+    func test_topFive_exactlyFive_allKept() {
+        let all = (1...5).map { mu("M\($0)", month: 100 - $0, today: $0) }
+        XCTAssertEqual(ModelUsage.topFive(from: all).count, 5)
+    }
+
+    func test_topFive_alwaysCapsAtFive() {
+        let all = (1...10).map { mu("M\($0)", month: 100 - $0, today: $0 * 2) }
+        XCTAssertEqual(ModelUsage.topFive(from: all).count, 5)
+    }
 }
