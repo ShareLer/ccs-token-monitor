@@ -29,7 +29,7 @@ struct TrendChartView: View {
                     .interpolationMethod(.catmullRom)
                 }
             }
-            .chartForegroundStyleScale(range: palette(models.count))
+            .chartForegroundStyleScale(domain: models, range: palette(models.count))
             .chartLegend(position: .bottom, spacing: 4)
             .frame(height: 140)
             .chartOverlay { proxy in
