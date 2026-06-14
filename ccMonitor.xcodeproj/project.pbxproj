@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2A1E24E3CFA8F720F57A53E6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EEABA8EAE13F778B04921533 /* Assets.xcassets */; };
 		3004EF68DC67B70942BC75F2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB445B38AD672E47156FACCB /* AppDelegate.swift */; };
 		499D030563E427DD7449DA2C /* DateWindows.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7470E8C3E7DAD57775D5ED /* DateWindows.swift */; };
 		4F53CA6379FCB83C62599F24 /* Screenshotter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B505F4193DEC7CD6EBD41FC /* Screenshotter.swift */; };
@@ -74,6 +75,7 @@
 		E67A6E4055DF2DDF5F13D6FD /* TimeRangeSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeRangeSelector.swift; sourceTree = "<group>"; };
 		ECCE475913DF220B27F99452 /* ccMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ccMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDFC59DC26D40D3AC62EA763 /* Pricing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pricing.swift; sourceTree = "<group>"; };
+		EEABA8EAE13F778B04921533 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FA7E42D60A61E7AAB7345B8B /* FormattersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattersTests.swift; sourceTree = "<group>"; };
 		FB445B38AD672E47156FACCB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		FE565B0F1424F5B57FDD9212 /* CacheRateLevelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheRateLevelTests.swift; sourceTree = "<group>"; };
@@ -171,6 +173,7 @@
 			isa = PBXGroup;
 			children = (
 				FB445B38AD672E47156FACCB /* AppDelegate.swift */,
+				EEABA8EAE13F778B04921533 /* Assets.xcassets */,
 				4FC17AB1B273AF4A41A917D9 /* ccMonitorApp.swift */,
 				A2CCB2B7BCB29716841853CA /* Data */,
 				0944A1E50D6E6B724C8DD147 /* Models */,
@@ -197,6 +200,7 @@
 			buildConfigurationList = E10ECA17434EBC04781B6C46 /* Build configuration list for PBXNativeTarget "ccMonitor" */;
 			buildPhases = (
 				1E814BAFDD94157EC66A4882 /* Sources */,
+				52E51FC7E4D411484481A14D /* Resources */,
 			);
 			buildRules = (
 			);
@@ -263,6 +267,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		52E51FC7E4D411484481A14D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2A1E24E3CFA8F720F57A53E6 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		1BC4C44DC220943642DFA86C /* Sources */ = {
@@ -382,6 +397,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -453,6 +469,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
