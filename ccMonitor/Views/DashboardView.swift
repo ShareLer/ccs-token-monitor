@@ -39,10 +39,10 @@ struct DashboardView: View {
                         Text(err).font(UB.Font.body).foregroundColor(.red)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    ModelListView(usages: store.modelUsages, pricing: store.pricing)
                     SummaryView(selectedRange: $store.selectedRange,
                                 summary: store.summary,
                                 onCustomTap: { showDatePicker = true })
+                    ModelListView(usages: store.modelUsages, pricing: store.pricing)
                     TrendChartView(points: store.trend)
                     HeatmapView(days: store.heatmap, fitMode: settings.heatmapFitMode)
                 }

@@ -12,15 +12,16 @@ struct SummaryView: View {
 
             Divider()
 
-            // 四列并排，同字体
+            // 四列并排，同字体。输入=未缓存输入+写缓存，缓存=命中缓存(cache_read)；
+            // 输入+输出+缓存 = 总计，无重叠无遗漏。
             HStack(alignment: .top) {
                 statCol(formatTokens(summary.total), "总计", accent: true)
                 Spacer()
-                statCol(formatTokens(summary.input), "输入")
+                statCol(formatTokens(summary.cacheRead), "缓存")
+                Spacer()
+                statCol(formatTokens(summary.input + summary.cacheCreate), "输入")
                 Spacer()
                 statCol(formatTokens(summary.output), "输出")
-                Spacer()
-                statCol(formatTokens(summary.cacheRead + summary.cacheCreate), "缓存")
             }
 
             UsageProgressBar(

@@ -69,12 +69,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         win.title = "设置"
         win.styleMask = [.titled, .closable]
         win.isReleasedWhenClosed = false
-        win.center()
         win.delegate = self
         settingsWindow = win
 
         win.makeKeyAndOrderFront(nil)
+        win.centerOnScreen()   // 几何正中（NSWindow.center() 是垂直偏上 1/3）
         NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+extension NSWindow {
+    /// 把窗口放到所在屏幕的几何正中心（区别于 center() 的垂直偏上）。
+    func centerOnScreen() {
+        guard let screen = screen ?? NSScreen.main else { return }
+        let v = screen.visibleFrame
+        let x = v.minX + (v.width - frame.width) / 2
+        let y = v.minY + (v.height - frame.height) / 2
+        setFrameOrigin(NSPoint(x: x, y: y))
     }
 }
 

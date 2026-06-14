@@ -247,7 +247,7 @@ struct SettingsView: View {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        if runPanelInFront(panel) == .OK, let url = panel.url {
+        presentPanel(panel) { url in
             settings.dbPath = url.path
             loadModels()
         }
@@ -259,18 +259,22 @@ struct SettingsView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.prompt = "选择"
-        if runPanelInFront(panel) == .OK, let url = panel.url {
+        presentPanel(panel) { url in
             settings.screenshotDir = url.path
         }
     }
 
-    /// 菜单栏 app（LSUIElement）默认非前台，NSOpenPanel 会被其它窗口盖住。
-    /// 先把 app 激活到前台并置顶 panel，确保选择窗口出现在最上层。
-    private func runPanelInFront(_ panel: NSOpenPanel) -> NSApplication.ModalResponse {
-        NSApp.activate(ignoringOtherApps: true)
-        panel.level = .modalPanel
-        panel.makeKeyAndOrderFront(nil)
-        return panel.runModal()
+    /// 以 sheet 形式把 panel 依附在设置窗口上：天然随设置窗口居中、永远在其之上、
+    /// 不受菜单栏 app(LSUIElement)非前台导致的层级覆盖影响。
+    private func presentPanel(_ panel: NSOpenPanel, onPick: @escaping (URL) -> Void) {
+        guard let host = NSApp.keyWindow else {
+            // 兜底：无宿主窗口时退回独立模态
+            if panel.runModal() == .OK, let url = panel.url { onPick(url) }
+            return
+        }
+        panel.beginSheetModal(for: host) { resp in
+            if resp == .OK, let url = panel.url { onPick(url) }
+        }
     }
 }
 

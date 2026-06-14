@@ -20,8 +20,8 @@ struct SnapshotView: View {
                 Text("CCS Token Monitor").font(UB.Font.popoverTitle)
                 Spacer()
             }
-            ModelListView(usages: modelUsages, pricing: pricing)
             SummaryView(selectedRange: .constant(selectedRange), summary: summary, onCustomTap: {})
+            ModelListView(usages: modelUsages, pricing: pricing)
             TrendChartView(points: trend)
             HeatmapView(days: heatmap, fitMode: heatmapFitMode)
         }
