@@ -81,6 +81,27 @@ enum UB {
             let hue = Double((i - series.count) % 24) / 24.0
             return Color(hue: hue, saturation: 0.72, brightness: 0.78)
         }
+
+        /// 柔和多色板（低饱和、高明度，Tableau/AntV 风）：用于柱状堆叠等大面积色块，
+        /// 与浅灰底/白卡片/柔蓝主调协调，不刺眼。
+        static let softSeries: [Color] = [
+            Color(hex: 0x5B8FF9),   // 蓝
+            Color(hex: 0x61DDAA),   // 青绿
+            Color(hex: 0xF6BD16),   // 橙黄
+            Color(hex: 0xF08BB4),   // 珊瑚
+            Color(hex: 0x9270CA),   // 紫
+            Color(hex: 0x78D3F8),   // 天蓝
+            Color(hex: 0xFF9D4D),   // 橙
+            Color(hex: 0x269A99),   // 墨绿
+            Color(hex: 0xBEA0DD),  // 浅紫
+            Color(hex: 0x6DC8EC),   // 湖蓝
+        ]
+        /// 超出预设色板时回落到柔和 HSB（低饱和、高明度）。
+        static func softSeriesColor(_ i: Int) -> Color {
+            if i < softSeries.count { return softSeries[i] }
+            let hue = Double((i - softSeries.count) % 24) / 24.0
+            return Color(hue: hue, saturation: 0.5, brightness: 0.85)
+        }
     }
 }
 
