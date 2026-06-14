@@ -1,35 +1,40 @@
 import SwiftUI
 
-/// ① 模型列表：每行 模型名 + 缓存率 + 成本 + 进度条(今日/本月)。
+/// ① 模型列表：整体一张卡，卡内每个模型一行（行间细分隔线），UsageBoard 风格。
 struct ModelListView: View {
     let usages: [ModelUsage]
     let pricing: PricingStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ForEach(usages) { u in
-                VStack(spacing: 8) {
-                    HStack {
-                        Text(u.model)
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        Text("缓存率: \(formatCacheRate(u.cacheRate))")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Color(hex: 0xFFC107))
-                        Text("成本: \(formatCost(u.cost(with: pricing.pricing(for: u.model))))")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Color(hex: 0x4CAF50))
-                    }
-                    UsageProgressBar(
-                        fraction: u.monthTotal == 0 ? 0 : Double(u.todayTotal) / Double(u.monthTotal),
-                        text: "\(formatTokens(u.todayTotal)) / \(formatTokens(u.monthTotal))"
-                    )
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(usages.enumerated()), id: \.element.id) { index, u in
+                if index > 0 {
+                    Divider().padding(.vertical, UB.Spacing.l)
                 }
-                .padding(12)
-                .background(Color(hex: 0xFAFAFA))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(hex: 0xEEEEEE)))
+                row(u)
             }
+        }
+        .ubCard()
+    }
+
+    private func row(_ u: ModelUsage) -> some View {
+        VStack(spacing: UB.Spacing.m) {
+            HStack {
+                Text(u.model)
+                    .font(UB.Font.cardTitle)
+                    .lineLimit(1)
+                Spacer()
+                Text("缓存 \(formatCacheRate(u.cacheRate))")
+                    .font(UB.Font.label)
+                    .foregroundColor(UB.Palette.cache)
+                Text(formatCost(u.cost(with: pricing.pricing(for: u.model))))
+                    .font(UB.Font.label)
+                    .foregroundColor(UB.Palette.cost)
+            }
+            UsageProgressBar(
+                fraction: u.monthTotal == 0 ? 0 : Double(u.todayTotal) / Double(u.monthTotal),
+                text: "\(formatTokens(u.todayTotal)) / \(formatTokens(u.monthTotal))"
+            )
         }
     }
 }
@@ -42,5 +47,5 @@ struct ModelListView: View {
         ModelUsage(model: "deepseek-v4-pro", monthInput: 5816761, monthOutput: 1644166,
                    monthCacheRead: 270605312, monthCacheCreate: 0, todayTotal: 30000),
     ], pricing: pricing)
-    .padding().frame(width: 420)
+    .padding().frame(width: 420).background(UB.Canvas.canvasBackground)
 }

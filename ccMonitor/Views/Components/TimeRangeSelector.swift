@@ -14,21 +14,22 @@ struct TimeRangeSelector: View {
     }
 
     private func chip(_ title: String, _ range: TimeRange, custom: Bool = false) -> some View {
-        Button(action: {
+        let active = isActive(range)
+        return Button(action: {
             if custom { onCustomTap() } else { selected = range }
         }) {
             Text(title)
-                .font(.system(size: 12))
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(isActive(range) ? Color(hex: 0x2196F3) : Color(hex: 0xF0F0F0))
-                .foregroundColor(isActive(range) ? .white : .primary)
+                .font(UB.Font.label)
+                .padding(.horizontal, UB.Spacing.xl).padding(.vertical, UB.Spacing.s)
+                .background(active ? UB.Palette.accent : UB.Palette.accent.opacity(0.10))
+                .foregroundColor(active ? .white : UB.Palette.accent)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
     }
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: UB.Spacing.s) {
             chip("当日", .today)
             chip("7天", .last7d)
             chip("30天", .last30d)

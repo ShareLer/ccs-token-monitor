@@ -54,7 +54,7 @@ struct TrendChartView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("最近30天用量趋势").font(.system(size: 13, weight: .semibold))
+            Text("最近30天用量趋势").font(UB.Font.sectionTitle)
 
             if days.isEmpty {
                 Text("暂无数据").font(.caption).foregroundColor(.secondary)
@@ -64,11 +64,7 @@ struct TrendChartView: View {
                     .frame(height: 180)
             }
         }
-        .padding(16)
-        .background(Color(nsColor: .textBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5))
+        .ubCard()
     }
 
     private func palette(_ n: Int) -> Color {

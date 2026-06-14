@@ -7,13 +7,13 @@ struct SummaryView: View {
     let onCustomTap: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: UB.Spacing.xl) {
             TimeRangeSelector(selected: $selectedRange, onCustomTap: onCustomTap)
 
-            VStack(spacing: 12) {
+            VStack(spacing: UB.Spacing.xl) {
                 Text(formatTokens(summary.total))
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(Color(hex: 0x2196F3))
+                    .font(UB.Font.summaryBig)
+                    .foregroundColor(UB.Palette.accent)
 
                 HStack {
                     statCol(formatTokens(summary.input), "输入Token")
@@ -26,22 +26,23 @@ struct SummaryView: View {
                 UsageProgressBar(
                     fraction: summary.cacheRate,
                     text: "缓存率: \(formatCacheRate(summary.cacheRate))",
-                    height: 12,
-                    gradient: LinearGradient(colors: [Color(hex: 0xFFC107), Color(hex: 0xFFA000)],
-                                             startPoint: .leading, endPoint: .trailing)
+                    tint: UB.Palette.cache
                 )
             }
-            .padding(16)
-            .background(Color(hex: 0xF0F8FF))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(hex: 0xD0E6FF)))
+            .padding(UB.Spacing.xxl)
+            .background(UB.Palette.accent.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: UB.Radius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: UB.Radius.card, style: .continuous)
+                    .stroke(UB.Palette.accent.opacity(0.18), lineWidth: 0.5)
+            )
         }
     }
 
     private func statCol(_ value: String, _ label: String) -> some View {
-        VStack(spacing: 2) {
-            Text(value).font(.system(size: 14, weight: .semibold))
-            Text(label).font(.system(size: 11)).foregroundColor(.secondary)
+        VStack(spacing: UB.Spacing.xs) {
+            Text(value).font(UB.Font.metricBig)
+            Text(label).font(UB.Font.caption).foregroundColor(.secondary)
         }
     }
 }

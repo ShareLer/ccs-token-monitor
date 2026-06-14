@@ -16,11 +16,12 @@ struct DashboardView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+                .background(UB.Canvas.barBackground)
             Divider()
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: UB.Spacing.xl) {
                     if let err = store.loadError {
-                        Text(err).font(.system(size: 12)).foregroundColor(.red)
+                        Text(err).font(UB.Font.body).foregroundColor(.red)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     ModelListView(usages: store.modelUsages, pricing: store.pricing)
@@ -30,12 +31,12 @@ struct DashboardView: View {
                     TrendChartView(points: store.trend)
                     HeatmapView(days: store.heatmap, fitMode: settings.heatmapFitMode)
                 }
-                .padding(16)
+                .padding(UB.Spacing.xxl)
             }
         }
         .frame(width: 420)
         .frame(maxHeight: 640)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(UB.Canvas.canvasBackground)
         .sheet(isPresented: $showSettings) {
             SettingsView(settings: store.settings, pricing: store.pricing,
                          onSaved: { showSettings = false; Task { await store.refreshAll() } })
@@ -47,26 +48,25 @@ struct DashboardView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
-            Text("Token 使用量监控").font(.system(size: 16, weight: .semibold))
+        HStack(spacing: UB.Spacing.m) {
+            Text("Token 使用量监控").font(UB.Font.popoverTitle)
             Spacer()
             // 倒计时：距下次自动刷新（加载中不显示，让位给转圈）
             if let next = store.nextRefreshAt, !store.isLoading {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let remaining = max(0, Int(next.timeIntervalSince(context.date).rounded(.up)))
                     Text(countdownText(remaining))
-                        .font(.system(size: 11, weight: .medium).monospacedDigit())
-                        .foregroundColor(.secondary)
+                        .font(UB.Font.countdown)
+                        .foregroundStyle(.tertiary)
                 }
             }
             RefreshButton(isLoading: store.isLoading) {
                 Task { await store.refreshAll() }
             }
-            Button { showSettings = true } label: {
-                Image(systemName: "gearshape")
-            }.buttonStyle(.plain).help("设置")
+            IconButton(systemName: "gearshape", help: "设置") { showSettings = true }
+            IconButton(systemName: "power", help: "退出") { NSApp.terminate(nil) }
         }
-        .padding(.horizontal, 20).padding(.vertical, 16)
+        .padding(.horizontal, UB.Spacing.xxl).padding(.vertical, UB.Spacing.xl)
     }
 
     private func countdownText(_ seconds: Int) -> String {
@@ -111,6 +111,24 @@ private struct RefreshButton: View {
             .foregroundStyle(.secondary)
             .help("刷新")
         }
+    }
+}
+
+/// 统一的标题栏图标按钮（borderless + secondary，参考 UsageBoard）。
+private struct IconButton: View {
+    let systemName: String
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 20, height: 20)
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(.secondary)
+        .help(help)
     }
 }
 

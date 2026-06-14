@@ -57,7 +57,7 @@ struct HeatmapView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Token活动").font(.system(size: 14, weight: .semibold))
+            Text("Token活动").font(UB.Font.sectionTitle)
             if fitMode == .fit {
                 // 用 GeometryReader 拿可用宽度，动态算格子边长铺满不滑动
                 GeometryReader { geo in
@@ -72,10 +72,7 @@ struct HeatmapView: View {
                 }
             }
         }
-        .padding(16)
-        .background(Color(hex: 0xFAFAFA))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(hex: 0xEEEEEE)))
+        .ubCard()
     }
 
     /// fit 模式高度估算：用 420 面板宽减 padding 估算单格高度。
