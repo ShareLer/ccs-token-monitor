@@ -3,7 +3,10 @@ import SwiftUI
 /// ① 模型列表：整体一张卡，卡内每个模型一行（行间细分隔线），UsageBoard 风格。
 struct ModelListView: View {
     let usages: [ModelUsage]
-    let pricing: PricingStore
+    // 必须 @ObservedObject：价格在设置面板改动后，PricingStore 变化要直接驱动本视图重绘。
+    // 若用普通 let，由于 usages（不含价格字段）刷新前后 Equatable 相等、pricing 又是同一引用，
+    // SwiftUI 会 diff 跳过重绘，导致成本一直停留在旧值（如 $0.00）。
+    @ObservedObject var pricing: PricingStore
 
     var body: some View {
         let shown = ModelUsage.topFive(from: usages)

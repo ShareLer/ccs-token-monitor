@@ -49,6 +49,18 @@ final class PricingTests: XCTestCase {
         XCTAssertEqual(back, p)
     }
 
+    /// 回归：用真实库里的 deepseek-v4-pro 本月用量 + 用户实际填的单价，成本必须非零。
+    /// 坐实「数据/计算层没问题」——此前的 $0.00 是视图层 diff 跳过重绘所致，非计算错误。
+    func test_cost_realWorld_deepseekPro_isNonZero() {
+        let u = ModelUsage(model: "deepseek-v4-pro",
+                           monthInput: 1_000_770, monthOutput: 458_430,
+                           monthCacheRead: 91_211_392, monthCacheCreate: 0, todayTotal: 0)
+        let p = ModelPricing(input: 3, output: 6, cacheRead: 0.025, cacheCreate: 3)
+        // in: 1000770*3/1e6=3.002, out: 458430*6/1e6=2.751, cr: 91211392*0.025/1e6=2.280 → 8.033
+        XCTAssertEqual(u.cost(with: p), 8.033, accuracy: 0.01)
+        XCTAssertGreaterThan(u.cost(with: p), 0)
+    }
+
     // MARK: topFive 筛选（月Top3 + 日Top2，去重递补到5个）
 
     /// 构造一个 ModelUsage：月总量靠 monthInput 控制，日总量靠 todayTotal。
