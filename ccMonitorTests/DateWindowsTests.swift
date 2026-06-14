@@ -58,4 +58,12 @@ final class DateWindowsTests: XCTestCase {
         XCTAssertEqual(DateWindows.resolve(.last30d, now: now, calendar: cal).start,
                        DateWindows.lastDays(30, now: now, calendar: cal).start)
     }
+
+    func test_thisYear_startIsJan1_endIsTomorrow() {
+        // 本自然年：1月1日 00:00 ..< 今天次日 00:00（含今天，不含未来）
+        let now = date(2026, 6, 14, 17, 30)
+        let w = DateWindows.thisYear(now: now, calendar: makeCalendar())
+        XCTAssertEqual(w.start, Int(date(2026, 1, 1, 0, 0).timeIntervalSince1970))
+        XCTAssertEqual(w.end, Int(date(2026, 6, 15, 0, 0).timeIntervalSince1970))
+    }
 }

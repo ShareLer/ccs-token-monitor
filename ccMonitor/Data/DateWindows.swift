@@ -24,6 +24,15 @@ enum DateWindows {
         return DateWindow(start: unix(start), end: unix(end))
     }
 
+    /// 本自然年：今年 1 月 1 日 00:00 ..< 今天次日 00:00（含今天，不含未来日期）
+    static func thisYear(now: Date, calendar: Calendar) -> DateWindow {
+        let comps = calendar.dateComponents([.year], from: now)
+        let start = calendar.date(from: comps)!
+        let todayStart = calendar.startOfDay(for: now)
+        let end = calendar.date(byAdding: .day, value: 1, to: todayStart)!
+        return DateWindow(start: unix(start), end: unix(end))
+    }
+
     /// 最近 n 天（含今天）：start = (今天 - (n-1)) 的 00:00，end = 次日 00:00
     static func lastDays(_ n: Int, now: Date, calendar: Calendar) -> DateWindow {
         let todayStart = calendar.startOfDay(for: now)

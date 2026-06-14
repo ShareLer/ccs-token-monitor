@@ -33,6 +33,15 @@ struct SettingsView: View {
                 .pickerStyle(.segmented).labelsHidden()
             }
 
+            VStack(alignment: .leading, spacing: 4) {
+                Text("热力图显示").font(.system(size: 12, weight: .medium))
+                Picker("", selection: $settings.heatmapFitMode) {
+                    Text("完全显示本年").tag(HeatmapFitMode.fit)
+                    Text("固定大小可滑动").tag(HeatmapFitMode.scroll)
+                }
+                .pickerStyle(.segmented).labelsHidden()
+            }
+
             Text("模型价格（$ / 1M token）").font(.system(size: 12, weight: .medium))
             if let err = loadError {
                 Text(err).font(.system(size: 11)).foregroundColor(.red)

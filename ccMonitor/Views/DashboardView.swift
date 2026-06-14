@@ -2,10 +2,16 @@ import SwiftUI
 
 struct DashboardView: View {
     @ObservedObject var store: DataStore
+    @ObservedObject var settings: SettingsStore
     @State private var showSettings = false
     @State private var showDatePicker = false
     @State private var customStart = Date()
     @State private var customEnd = Date()
+
+    init(store: DataStore) {
+        self.store = store
+        self.settings = store.settings
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,7 +28,7 @@ struct DashboardView: View {
                                 summary: store.summary,
                                 onCustomTap: { showDatePicker = true })
                     TrendChartView(points: store.trend)
-                    HeatmapView(days: store.heatmap)
+                    HeatmapView(days: store.heatmap, fitMode: settings.heatmapFitMode)
                 }
                 .padding(16)
             }

@@ -30,8 +30,8 @@ struct TrendChartView: View {
                 }
             }
             .chartForegroundStyleScale(domain: models, range: palette(models.count))
-            .chartLegend(position: .bottom, spacing: 4)
-            .frame(height: 140)
+            .chartLegend(.hidden)
+            .frame(height: 160)
             .chartOverlay { proxy in
                 GeometryReader { geo in
                     Rectangle().fill(.clear).contentShape(Rectangle())

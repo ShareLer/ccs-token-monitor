@@ -38,7 +38,7 @@ final class DataStore: ObservableObject {
             let (usages, summary, trend, heat) = try await Task.detached(priority: .userInitiated) {
                 let summaryWindow = DateWindows.resolve(range, now: now, calendar: cal)
                 let trendWindow = DateWindows.lastDays(30, now: now, calendar: cal)
-                let heatWindow = DateWindows.lastDays(52 * 7, now: now, calendar: cal)
+                let heatWindow = DateWindows.thisYear(now: now, calendar: cal)
                 return (
                     try repo.fetchModelUsages(now: now, calendar: cal),
                     try repo.fetchSummary(window: summaryWindow),
