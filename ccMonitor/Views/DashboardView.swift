@@ -32,7 +32,7 @@ struct DashboardView: View {
             header
                 .background(UB.Canvas.barBackground)
             Divider()
-            // 内容整体可滚：模型用量 + 总Token + 趋势图 + 热力图。
+            // 内容整体可滚：总Token + 模型用量 + 趋势图 + 热力图。
             ScrollView {
                 VStack(spacing: UB.Spacing.xl) {
                     if let err = store.loadError {
@@ -42,7 +42,9 @@ struct DashboardView: View {
                     SummaryView(selectedRange: $store.selectedRange,
                                 summary: store.summary,
                                 onCustomTap: { showDatePicker = true })
-                    ModelListView(usages: store.modelUsages, pricing: store.pricing)
+                    ModelListView(usages: store.modelUsages,
+                                  total: store.summary.total,
+                                  pricing: store.pricing)
                     TrendChartView(points: store.trend)
                     HeatmapView(days: store.heatmap, fitMode: settings.heatmapFitMode)
                 }

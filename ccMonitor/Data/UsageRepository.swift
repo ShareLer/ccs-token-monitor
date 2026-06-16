@@ -10,40 +10,30 @@ struct UsageRepository {
         return try body(db)
     }
 
-    /// ① 模型列表：本月按 model 聚合 + 今日总量合并，按本月用量降序。
-    func fetchModelUsages(now: Date, calendar: Calendar) throws -> [ModelUsage] {
-        let month = DateWindows.thisMonth(now: now, calendar: calendar)
-        let today = DateWindows.today(now: now, calendar: calendar)
-
+    /// ① 模型列表：给定窗口内按 model 聚合，按总用量降序取 Top5。
+    func fetchModelUsages(window: DateWindow, limit: Int = 5) throws -> [ModelUsage] {
         return try withDB { db in
-            var monthRows: [(String, Int, Int, Int, Int)] = []
-            try db.query("""
-                SELECT model, SUM(input_tokens), SUM(output_tokens),
-                       SUM(cache_read_tokens), SUM(cache_creation_tokens)
-                FROM proxy_request_logs
-                WHERE created_at >= ? AND created_at < ?
-                GROUP BY model;
-            """, ints: [month.start, month.end]) { row in
-                monthRows.append((row.string(0) ?? "", row.int(1), row.int(2), row.int(3), row.int(4)))
-            }
-
-            var todayMap: [String: Int] = [:]
+            var usages: [ModelUsage] = []
             try db.query("""
                 SELECT model,
-                       SUM(input_tokens+output_tokens+cache_read_tokens+cache_creation_tokens)
+                       COALESCE(SUM(input_tokens),0),
+                       COALESCE(SUM(output_tokens),0),
+                       COALESCE(SUM(cache_read_tokens),0),
+                       COALESCE(SUM(cache_creation_tokens),0),
+                       COALESCE(SUM(input_tokens+output_tokens+cache_read_tokens+cache_creation_tokens),0) AS total
                 FROM proxy_request_logs
                 WHERE created_at >= ? AND created_at < ?
-                GROUP BY model;
-            """, ints: [today.start, today.end]) { row in
-                todayMap[row.string(0) ?? ""] = row.int(1)
+                GROUP BY model
+                ORDER BY total DESC, model ASC
+                LIMIT ?;
+            """, ints: [window.start, window.end, limit]) { row in
+                usages.append(ModelUsage(model: row.string(0) ?? "",
+                                         input: row.int(1),
+                                         output: row.int(2),
+                                         cacheRead: row.int(3),
+                                         cacheCreate: row.int(4)))
             }
-
-            let usages = monthRows.map { r in
-                ModelUsage(model: r.0, monthInput: r.1, monthOutput: r.2,
-                           monthCacheRead: r.3, monthCacheCreate: r.4,
-                           todayTotal: todayMap[r.0] ?? 0)
-            }
-            return usages.sorted { $0.monthTotal > $1.monthTotal }
+            return usages
         }
     }
 

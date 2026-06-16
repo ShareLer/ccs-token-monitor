@@ -21,7 +21,7 @@ struct SnapshotView: View {
                 Spacer()
             }
             SummaryView(selectedRange: .constant(selectedRange), summary: summary, onCustomTap: {})
-            ModelListView(usages: modelUsages, pricing: pricing)
+            ModelListView(usages: modelUsages, total: summary.total, pricing: pricing)
             TrendChartView(points: trend)
             HeatmapView(days: heatmap, fitMode: heatmapFitMode)
         }
@@ -35,10 +35,10 @@ struct SnapshotView: View {
     let pricing = PricingStore()
     return SnapshotView(
         modelUsages: [
-            ModelUsage(model: "claude-sonnet-4-6", monthInput: 334848, monthOutput: 4195578,
-                       monthCacheRead: 333630681, monthCacheCreate: 33315399, todayTotal: 120000),
-            ModelUsage(model: "deepseek-v4-pro", monthInput: 5816761, monthOutput: 1644166,
-                       monthCacheRead: 270605312, monthCacheCreate: 0, todayTotal: 30000),
+            ModelUsage(model: "claude-sonnet-4-6", input: 334848, output: 4195578,
+                       cacheRead: 333630681, cacheCreate: 33315399),
+            ModelUsage(model: "deepseek-v4-pro", input: 5816761, output: 1644166,
+                       cacheRead: 270605312, cacheCreate: 0),
         ],
         pricing: pricing,
         summary: SummaryStats(input: 1224276, output: 987654, cacheRead: 200000, cacheCreate: 36622),

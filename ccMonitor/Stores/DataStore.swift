@@ -13,7 +13,7 @@ final class DataStore: ObservableObject {
     @Published var nextRefreshAt: Date?
 
     @Published var selectedRange: TimeRange = .today {
-        didSet { Task { await refreshSummary() } }
+        didSet { Task { await refreshSelectedRange() } }
     }
 
     let settings: SettingsStore
@@ -38,12 +38,12 @@ final class DataStore: ObservableObject {
 
         do {
             let (usages, summary, trend, heat) = try await Task.detached(priority: .userInitiated) {
-                let summaryWindow = DateWindows.resolve(range, now: now, calendar: cal)
+                let selectedWindow = DateWindows.resolve(range, now: now, calendar: cal)
                 let trendWindow = DateWindows.lastDays(30, now: now, calendar: cal)
                 let heatWindow = DateWindows.thisYear(now: now, calendar: cal)
                 return (
-                    try repo.fetchModelUsages(now: now, calendar: cal),
-                    try repo.fetchSummary(window: summaryWindow),
+                    try repo.fetchModelUsages(window: selectedWindow),
+                    try repo.fetchSummary(window: selectedWindow),
                     try repo.fetchTrend(window: trendWindow),
                     try repo.fetchHeatmap(window: heatWindow)
                 )
@@ -63,17 +63,22 @@ final class DataStore: ObservableObject {
         }
     }
 
-    /// 仅刷新汇总（时间范围切换时）。
-    func refreshSummary() async {
+    /// 刷新跟随顶部时间范围的区块（模型明细 + 汇总）。
+    func refreshSelectedRange() async {
         let repo = self.repo
         let range = self.selectedRange
         let now = Date()
         let cal = Calendar.current
         do {
-            let s = try await Task.detached(priority: .userInitiated) {
-                try repo.fetchSummary(window: DateWindows.resolve(range, now: now, calendar: cal))
+            let (usages, summary) = try await Task.detached(priority: .userInitiated) {
+                let window = DateWindows.resolve(range, now: now, calendar: cal)
+                return (
+                    try repo.fetchModelUsages(window: window),
+                    try repo.fetchSummary(window: window)
+                )
             }.value
-            self.summary = s
+            self.modelUsages = usages
+            self.summary = summary
             self.loadError = nil
         } catch {
             self.loadError = describe(error)

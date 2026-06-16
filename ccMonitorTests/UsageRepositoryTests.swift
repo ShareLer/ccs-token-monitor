@@ -64,29 +64,26 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(got[1].0, "b"); XCTAssertEqual(got[1].1, 2)
     }
 
-    func test_fetchModelUsages_mergesMonthAndToday_sortedDesc() throws {
-        let cal = Calendar.current
-        let now = Date()
-        let month = DateWindows.thisMonth(now: now, calendar: cal)
-        let today = DateWindows.today(now: now, calendar: cal)
-        let monthOnlyTs = month.start + 60
-        let todayTs = today.start + 60
+    func test_fetchModelUsages_filtersWindowAndReturnsTopFive_sortedDesc() throws {
         let path = try makeTempDB(rows: [
-            ("big",   monthOnlyTs, 1000, 0, 0, 0),
-            ("big",   todayTs,      500, 0, 0, 0),
-            ("small", monthOnlyTs,  100, 0, 0, 0),
+            ("alpha", 110, 1000, 0, 0, 0),
+            ("alpha", 120,  500, 0, 0, 0),
+            ("beta",  130,  900, 0, 0, 0),
+            ("gamma", 140,  800, 0, 0, 0),
+            ("delta", 150,  700, 0, 0, 0),
+            ("eps",   160,  600, 0, 0, 0),
+            ("zeta",  170,  500, 0, 0, 0),
+            ("outsideHigh", 90, 9999, 0, 0, 0),
         ])
         defer { try? FileManager.default.removeItem(atPath: path) }
 
         let repo = UsageRepository(dbPath: path)
-        let usages = try repo.fetchModelUsages(now: now, calendar: cal)
+        let usages = try repo.fetchModelUsages(window: DateWindow(start: 100, end: 200))
 
-        XCTAssertEqual(usages.count, 2)
-        XCTAssertEqual(usages[0].model, "big")
-        XCTAssertEqual(usages[0].monthInput, 1500)
-        XCTAssertEqual(usages[0].todayTotal, 500)
-        XCTAssertEqual(usages[1].model, "small")
-        XCTAssertEqual(usages[1].todayTotal, 0)
+        XCTAssertEqual(usages.count, 5)
+        XCTAssertEqual(usages.map(\.model), ["alpha", "beta", "gamma", "delta", "eps"])
+        XCTAssertEqual(usages[0].input, 1500)
+        XCTAssertEqual(usages[0].total, 1500)
     }
 
     func test_fetchSummary_forWindow() throws {
