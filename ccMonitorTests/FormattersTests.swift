@@ -14,6 +14,17 @@ final class FormattersTests: XCTestCase {
     func test_formatTokens_zero() {
         XCTAssertEqual(formatTokens(0), "0")
     }
+    func test_formatMenuBarTokens_roundsThousands() {
+        XCTAssertEqual(formatMenuBarTokens(123_456), "123k")
+        XCTAssertEqual(formatMenuBarTokens(123_500), "124k")
+    }
+    func test_formatMenuBarTokens_roundsMillions() {
+        XCTAssertEqual(formatMenuBarTokens(1_234_567), "1M")
+        XCTAssertEqual(formatMenuBarTokens(1_500_000), "2M")
+    }
+    func test_formatMenuBarTokens_small() {
+        XCTAssertEqual(formatMenuBarTokens(842), "842")
+    }
     func test_formatCost() {
         XCTAssertEqual(formatCost(74.7382), "$74.74")
     }

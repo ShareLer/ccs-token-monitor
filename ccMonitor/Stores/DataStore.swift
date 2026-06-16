@@ -5,6 +5,7 @@ import Combine
 final class DataStore: ObservableObject {
     @Published var modelUsages: [ModelUsage] = []
     @Published var summary: SummaryStats = .empty
+    @Published var todaySummary: SummaryStats = .empty
     @Published var trend: [TrendPoint] = []
     @Published var heatmap: [HeatmapDay] = []
     @Published var loadError: String?
@@ -37,19 +38,22 @@ final class DataStore: ObservableObject {
         let cal = Calendar.current
 
         do {
-            let (usages, summary, trend, heat) = try await Task.detached(priority: .userInitiated) {
+            let (usages, summary, todaySummary, trend, heat) = try await Task.detached(priority: .userInitiated) {
                 let selectedWindow = DateWindows.resolve(range, now: now, calendar: cal)
+                let todayWindow = DateWindows.today(now: now, calendar: cal)
                 let trendWindow = DateWindows.lastDays(30, now: now, calendar: cal)
                 let heatWindow = DateWindows.thisYear(now: now, calendar: cal)
                 return (
                     try repo.fetchModelUsages(window: selectedWindow),
                     try repo.fetchSummary(window: selectedWindow),
+                    try repo.fetchSummary(window: todayWindow),
                     try repo.fetchTrend(window: trendWindow),
                     try repo.fetchHeatmap(window: heatWindow)
                 )
             }.value
             self.modelUsages = usages
             self.summary = summary
+            self.todaySummary = todaySummary
             self.trend = trend
             self.heatmap = heat
             self.loadError = nil
@@ -79,6 +83,9 @@ final class DataStore: ObservableObject {
             }.value
             self.modelUsages = usages
             self.summary = summary
+            if range == .today {
+                self.todaySummary = summary
+            }
             self.loadError = nil
         } catch {
             self.loadError = describe(error)

@@ -7,6 +7,13 @@ func formatTokens(_ n: Int) -> String {
     return "\(n)"
 }
 
+func formatMenuBarTokens(_ n: Int) -> String {
+    let v = Double(n)
+    if v >= 1_000_000 { return "\(Int((v / 1_000_000).rounded()))M" }
+    if v >= 1_000 { return "\(Int((v / 1_000).rounded()))k" }
+    return "\(n)"
+}
+
 func formatCost(_ usd: Double) -> String {
     return String(format: "$%.2f", usd)
 }

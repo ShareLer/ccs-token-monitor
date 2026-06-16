@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Combine
 
 extension Notification.Name {
     /// 请求打开设置窗口（由 SwiftUI 内的设置/去设置按钮发出，AppDelegate 监听）。
@@ -12,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover!
     private var store: DataStore!
     private var settingsWindow: NSWindow?
+    private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settings = SettingsStore()
@@ -21,9 +23,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "chart.bar.fill", accessibilityDescription: "用量")
+            button.title = "0"
             button.action = #selector(togglePopover(_:))
             button.target = self
         }
+        store.$todaySummary
+            .map { formatMenuBarTokens($0.total) }
+            .removeDuplicates()
+            .sink { [weak self] text in
+                self?.statusItem.button?.title = text
+            }
+            .store(in: &cancellables)
 
         popover = NSPopover()
         popover.behavior = .transient
