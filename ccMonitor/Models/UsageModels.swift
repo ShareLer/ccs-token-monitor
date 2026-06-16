@@ -8,8 +8,16 @@ struct ModelUsage: Identifiable, Equatable {
     let output: Int
     let cacheRead: Int
     let cacheCreate: Int
+    let total: Int
 
-    var total: Int { input + output + cacheRead + cacheCreate }
+    init(model: String, input: Int, output: Int, cacheRead: Int, cacheCreate: Int, total: Int? = nil) {
+        self.model = model
+        self.input = input
+        self.output = output
+        self.cacheRead = cacheRead
+        self.cacheCreate = cacheCreate
+        self.total = total ?? (input + output + cacheRead + cacheCreate)
+    }
 
     /// 缓存率 = cache_read / (input + cache_read)。分母 0 → 0。
     var cacheRate: Double {
@@ -42,11 +50,19 @@ struct SummaryStats: Equatable {
     let output: Int
     let cacheRead: Int
     let cacheCreate: Int
+    let total: Int
 
-    var total: Int { input + output + cacheRead + cacheCreate }
     var cacheRate: Double {
         let denom = input + cacheRead
         return denom == 0 ? 0 : Double(cacheRead) / Double(denom)
+    }
+
+    init(input: Int, output: Int, cacheRead: Int, cacheCreate: Int, total: Int? = nil) {
+        self.input = input
+        self.output = output
+        self.cacheRead = cacheRead
+        self.cacheCreate = cacheCreate
+        self.total = total ?? (input + output + cacheRead + cacheCreate)
     }
 
     static let empty = SummaryStats(input: 0, output: 0, cacheRead: 0, cacheCreate: 0)

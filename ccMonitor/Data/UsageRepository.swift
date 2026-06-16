@@ -3,6 +3,19 @@ import Foundation
 /// 所有聚合查询。每次开只读连接，查完关闭。失败抛错，不崩溃。
 struct UsageRepository {
     let dbPath: String
+    private static let displayTotalSQL = """
+        input_tokens + output_tokens
+        + CASE
+            WHEN data_source = 'codex_session'
+              OR COALESCE(NULLIF(pricing_model, ''), model) LIKE 'gpt-%' THEN 0
+            ELSE cache_read_tokens
+          END
+        + CASE
+            WHEN data_source = 'codex_session'
+              OR COALESCE(NULLIF(pricing_model, ''), model) LIKE 'gpt-%' THEN 0
+            ELSE cache_creation_tokens
+          END
+        """
 
     private func withDB<T>(_ body: (SQLiteDatabase) throws -> T) throws -> T {
         let db = try SQLiteDatabase(path: dbPath, readonly: true)
@@ -20,7 +33,7 @@ struct UsageRepository {
                        COALESCE(SUM(output_tokens),0),
                        COALESCE(SUM(cache_read_tokens),0),
                        COALESCE(SUM(cache_creation_tokens),0),
-                       COALESCE(SUM(input_tokens+output_tokens+cache_read_tokens+cache_creation_tokens),0) AS total
+                       COALESCE(SUM(\(Self.displayTotalSQL)),0) AS total
                 FROM proxy_request_logs
                 WHERE created_at >= ? AND created_at < ?
                 GROUP BY model
@@ -31,24 +44,27 @@ struct UsageRepository {
                                          input: row.int(1),
                                          output: row.int(2),
                                          cacheRead: row.int(3),
-                                         cacheCreate: row.int(4)))
+                                         cacheCreate: row.int(4),
+                                         total: row.int(5)))
             }
             return usages
         }
     }
 
-    /// ② 汇总：给定窗口的四类 token 总和。
+    /// ② 汇总：给定窗口的原始四类 token 与归一化展示总量。
     func fetchSummary(window: DateWindow) throws -> SummaryStats {
         try withDB { db in
             var s = SummaryStats.empty
             try db.query("""
                 SELECT COALESCE(SUM(input_tokens),0), COALESCE(SUM(output_tokens),0),
-                       COALESCE(SUM(cache_read_tokens),0), COALESCE(SUM(cache_creation_tokens),0)
+                       COALESCE(SUM(cache_read_tokens),0), COALESCE(SUM(cache_creation_tokens),0),
+                       COALESCE(SUM(\(Self.displayTotalSQL)),0)
                 FROM proxy_request_logs
                 WHERE created_at >= ? AND created_at < ?;
             """, ints: [window.start, window.end]) { row in
                 s = SummaryStats(input: row.int(0), output: row.int(1),
-                                 cacheRead: row.int(2), cacheCreate: row.int(3))
+                                 cacheRead: row.int(2), cacheCreate: row.int(3),
+                                 total: row.int(4))
             }
             return s
         }
@@ -60,7 +76,7 @@ struct UsageRepository {
             var pts: [TrendPoint] = []
             try db.query("""
                 SELECT date(created_at,'unixepoch','localtime') AS day, model,
-                       SUM(input_tokens+output_tokens+cache_read_tokens+cache_creation_tokens)
+                       SUM(\(Self.displayTotalSQL))
                 FROM proxy_request_logs
                 WHERE created_at >= ? AND created_at < ?
                 GROUP BY day, model ORDER BY day;
@@ -80,7 +96,7 @@ struct UsageRepository {
             fmt.timeZone = TimeZone.current
             try db.query("""
                 SELECT date(created_at,'unixepoch','localtime') AS day,
-                       SUM(input_tokens+output_tokens+cache_read_tokens+cache_creation_tokens)
+                       SUM(\(Self.displayTotalSQL))
                 FROM proxy_request_logs
                 WHERE created_at >= ? AND created_at < ?
                 GROUP BY day ORDER BY day;

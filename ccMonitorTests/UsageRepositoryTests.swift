@@ -2,28 +2,67 @@ import XCTest
 @testable import ccMonitor
 
 final class UsageRepositoryTests: XCTestCase {
+    struct UsageRow {
+        let model: String
+        let created: Int
+        let input: Int
+        let output: Int
+        let cacheRead: Int
+        let cacheCreate: Int
+        let pricingModel: String?
+        let dataSource: String
+
+        init(
+            model: String,
+            created: Int,
+            input: Int,
+            output: Int,
+            cacheRead: Int,
+            cacheCreate: Int,
+            pricingModel: String? = nil,
+            dataSource: String = "session_log"
+        ) {
+            self.model = model
+            self.created = created
+            self.input = input
+            self.output = output
+            self.cacheRead = cacheRead
+            self.cacheCreate = cacheCreate
+            self.pricingModel = pricingModel
+            self.dataSource = dataSource
+        }
+    }
+
     /// 在临时目录建一个含 proxy_request_logs 表的库，返回路径。
     func makeTempDB(rows: [(model: String, created: Int, i: Int, o: Int, cr: Int, cc: Int)]) throws -> String {
+        try makeTempDB(rows: rows.map {
+            UsageRow(model: $0.model, created: $0.created, input: $0.i, output: $0.o, cacheRead: $0.cr, cacheCreate: $0.cc)
+        })
+    }
+
+    func makeTempDB(rows: [UsageRow]) throws -> String {
         let dir = NSTemporaryDirectory()
         let path = (dir as NSString).appendingPathComponent("ccm_test_\(UUID().uuidString).db")
         let db = try SQLiteDatabase(path: path, readonly: false)
         try db.exec("""
             CREATE TABLE proxy_request_logs (
                 request_id TEXT, provider_id TEXT, app_type TEXT, model TEXT,
+                request_model TEXT,
                 input_tokens INTEGER, output_tokens INTEGER,
                 cache_read_tokens INTEGER, cache_creation_tokens INTEGER,
                 total_cost_usd TEXT, latency_ms INTEGER, status_code INTEGER,
-                created_at INTEGER, data_source TEXT
+                created_at INTEGER, data_source TEXT, pricing_model TEXT
             );
         """)
         for r in rows {
+            let pricingModel = r.pricingModel.map { "'\($0)'" } ?? "NULL"
             try db.exec("""
                 INSERT INTO proxy_request_logs
-                (request_id, provider_id, app_type, model, input_tokens, output_tokens,
+                (request_id, provider_id, app_type, model, request_model, input_tokens, output_tokens,
                  cache_read_tokens, cache_creation_tokens, total_cost_usd, latency_ms,
-                 status_code, created_at, data_source)
-                VALUES ('r','_session','claude','\(r.model)', \(r.i), \(r.o), \(r.cr), \(r.cc),
-                        '0', 0, 200, \(r.created), 'session_log');
+                 status_code, created_at, data_source, pricing_model)
+                VALUES ('r','_session','claude','\(r.model)', '\(r.model)', \(r.input), \(r.output), \(r.cacheRead), \(r.cacheCreate),
+                        '0', 0, 200, \(r.created), '\(r.dataSource)', \(pricingModel));
             """)
         }
         db.close()
@@ -86,6 +125,35 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(usages[0].total, 1500)
     }
 
+    func test_fetchModelUsages_appliesModelSpecificTotalSemantics() throws {
+        let path = try makeTempDB(rows: [
+            UsageRow(model: "gpt-5.5", created: 110, input: 100, output: 20, cacheRead: 80, cacheCreate: 10),
+            UsageRow(model: "deepseek-v4-pro", created: 110, input: 10, output: 5, cacheRead: 7, cacheCreate: 3),
+            UsageRow(
+                model: "claude-sonnet-4-6",
+                created: 110,
+                input: 30,
+                output: 4,
+                cacheRead: 50,
+                cacheCreate: 6,
+                pricingModel: "gpt-5.4"
+            ),
+        ])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let repo = UsageRepository(dbPath: path)
+        let usages = try repo.fetchModelUsages(window: DateWindow(start: 100, end: 200))
+
+        let gpt = try XCTUnwrap(usages.first { $0.model == "gpt-5.5" })
+        XCTAssertEqual(gpt.total, 120)
+
+        let deepseek = try XCTUnwrap(usages.first { $0.model == "deepseek-v4-pro" })
+        XCTAssertEqual(deepseek.total, 25)
+
+        let proxiedGPT = try XCTUnwrap(usages.first { $0.model == "claude-sonnet-4-6" })
+        XCTAssertEqual(proxiedGPT.total, 34)
+    }
+
     func test_fetchSummary_forWindow() throws {
         let path = try makeTempDB(rows: [
             ("a", 1000, 10, 20, 30, 40),
@@ -99,6 +167,30 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(s.output, 22)
         XCTAssertEqual(s.cacheRead, 33)
         XCTAssertEqual(s.cacheCreate, 44)
+    }
+
+    func test_fetchSummary_appliesModelSpecificTotalSemantics() throws {
+        let path = try makeTempDB(rows: [
+            UsageRow(model: "gpt-5.5", created: 1000, input: 100, output: 20, cacheRead: 80, cacheCreate: 10),
+            UsageRow(model: "deepseek-v4-pro", created: 1000, input: 10, output: 5, cacheRead: 7, cacheCreate: 3),
+            UsageRow(
+                model: "claude-sonnet-4-6",
+                created: 1000,
+                input: 30,
+                output: 4,
+                cacheRead: 50,
+                cacheCreate: 6,
+                pricingModel: "gpt-5.4"
+            ),
+        ])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let repo = UsageRepository(dbPath: path)
+        let s = try repo.fetchSummary(window: DateWindow(start: 0, end: 2000))
+        XCTAssertEqual(s.input, 140)
+        XCTAssertEqual(s.output, 29)
+        XCTAssertEqual(s.cacheRead, 137)
+        XCTAssertEqual(s.cacheCreate, 19)
+        XCTAssertEqual(s.total, 179)
     }
 
     func test_fetchTrend_groupsByDayAndModel() throws {

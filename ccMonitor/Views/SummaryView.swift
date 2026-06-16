@@ -12,8 +12,7 @@ struct SummaryView: View {
 
             Divider()
 
-            // 四列并排，同字体。输入=未缓存输入+写缓存，缓存=命中缓存(cache_read)；
-            // 输入+输出+缓存 = 总计，无重叠无遗漏。
+            // 输入是否包含缓存读依数据源不同；总计口径由仓库层统一归一化。
             HStack(alignment: .top) {
                 statCol(formatTokens(summary.total), "总计", accent: true)
                 Spacer()
