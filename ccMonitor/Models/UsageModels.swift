@@ -1,6 +1,6 @@
 import Foundation
 
-/// ① 模型列表一行。当前选中时间范围口径。
+/// ① 模型列表一行。当前选中时间范围口径，input 为未命中缓存输入。
 struct ModelUsage: Identifiable, Equatable {
     var id: String { model }
     let model: String
@@ -19,7 +19,7 @@ struct ModelUsage: Identifiable, Equatable {
         self.total = total ?? (input + output + cacheRead + cacheCreate)
     }
 
-    /// 缓存率 = cache_read / (input + cache_read)。分母 0 → 0。
+    /// 缓存率 = cache_read / (未命中 input + cache_read)。分母 0 → 0。
     var cacheRate: Double {
         let denom = input + cacheRead
         return denom == 0 ? 0 : Double(cacheRead) / Double(denom)
@@ -44,7 +44,7 @@ struct ModelUsage: Identifiable, Equatable {
     }
 }
 
-/// ② 汇总区，跟随时间范围，不分模型。
+/// ② 汇总区，跟随时间范围，不分模型，input 为未命中缓存输入。
 struct SummaryStats: Equatable {
     let input: Int
     let output: Int

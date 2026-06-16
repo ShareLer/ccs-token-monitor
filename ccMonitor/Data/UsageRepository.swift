@@ -3,19 +3,35 @@ import Foundation
 /// 所有聚合查询。每次开只读连接，查完关闭。失败抛错，不崩溃。
 struct UsageRepository {
     let dbPath: String
-    private static let displayTotalSQL = """
-        input_tokens + output_tokens
-        + CASE
-            WHEN data_source = 'codex_session'
-              OR COALESCE(NULLIF(pricing_model, ''), model) LIKE 'gpt-%' THEN 0
-            ELSE cache_read_tokens
-          END
-        + CASE
-            WHEN data_source = 'codex_session'
-              OR COALESCE(NULLIF(pricing_model, ''), model) LIKE 'gpt-%' THEN 0
-            ELSE cache_creation_tokens
+    /// Codex 来源的 input_tokens 含 cache_read；Claude/session 来源的 input_tokens 已是未命中输入。
+    private static var usesCodexTokenSemanticsSQL: String {
+        """
+        data_source != 'session_log'
+        AND (
+            data_source = 'codex_session'
+            OR app_type = 'codex'
+        )
+        """
+    }
+
+    private static var normalizedInputSQL: String {
+        """
+        CASE
+            WHEN \(Self.usesCodexTokenSemanticsSQL) THEN
+                CASE
+                    WHEN input_tokens > cache_read_tokens THEN input_tokens - cache_read_tokens
+                    ELSE 0
+                END
+            ELSE input_tokens
           END
         """
+    }
+
+    private static var displayTotalSQL: String {
+        """
+        \(Self.normalizedInputSQL) + output_tokens + cache_read_tokens + cache_creation_tokens
+        """
+    }
 
     private func withDB<T>(_ body: (SQLiteDatabase) throws -> T) throws -> T {
         let db = try SQLiteDatabase(path: dbPath, readonly: true)
@@ -29,7 +45,7 @@ struct UsageRepository {
             var usages: [ModelUsage] = []
             try db.query("""
                 SELECT model,
-                       COALESCE(SUM(input_tokens),0),
+                       COALESCE(SUM(\(Self.normalizedInputSQL)),0),
                        COALESCE(SUM(output_tokens),0),
                        COALESCE(SUM(cache_read_tokens),0),
                        COALESCE(SUM(cache_creation_tokens),0),
@@ -56,7 +72,7 @@ struct UsageRepository {
         try withDB { db in
             var s = SummaryStats.empty
             try db.query("""
-                SELECT COALESCE(SUM(input_tokens),0), COALESCE(SUM(output_tokens),0),
+                SELECT COALESCE(SUM(\(Self.normalizedInputSQL)),0), COALESCE(SUM(output_tokens),0),
                        COALESCE(SUM(cache_read_tokens),0), COALESCE(SUM(cache_creation_tokens),0),
                        COALESCE(SUM(\(Self.displayTotalSQL)),0)
                 FROM proxy_request_logs

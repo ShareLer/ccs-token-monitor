@@ -9,6 +9,7 @@ final class UsageRepositoryTests: XCTestCase {
         let output: Int
         let cacheRead: Int
         let cacheCreate: Int
+        let appType: String
         let pricingModel: String?
         let dataSource: String
 
@@ -19,6 +20,7 @@ final class UsageRepositoryTests: XCTestCase {
             output: Int,
             cacheRead: Int,
             cacheCreate: Int,
+            appType: String = "claude",
             pricingModel: String? = nil,
             dataSource: String = "session_log"
         ) {
@@ -28,6 +30,7 @@ final class UsageRepositoryTests: XCTestCase {
             self.output = output
             self.cacheRead = cacheRead
             self.cacheCreate = cacheCreate
+            self.appType = appType
             self.pricingModel = pricingModel
             self.dataSource = dataSource
         }
@@ -61,7 +64,7 @@ final class UsageRepositoryTests: XCTestCase {
                 (request_id, provider_id, app_type, model, request_model, input_tokens, output_tokens,
                  cache_read_tokens, cache_creation_tokens, total_cost_usd, latency_ms,
                  status_code, created_at, data_source, pricing_model)
-                VALUES ('r','_session','claude','\(r.model)', '\(r.model)', \(r.input), \(r.output), \(r.cacheRead), \(r.cacheCreate),
+                VALUES ('r','_session','\(r.appType)','\(r.model)', '\(r.model)', \(r.input), \(r.output), \(r.cacheRead), \(r.cacheCreate),
                         '0', 0, 200, \(r.created), '\(r.dataSource)', \(pricingModel));
             """)
         }
@@ -127,16 +130,48 @@ final class UsageRepositoryTests: XCTestCase {
 
     func test_fetchModelUsages_appliesModelSpecificTotalSemantics() throws {
         let path = try makeTempDB(rows: [
-            UsageRow(model: "gpt-5.5", created: 110, input: 100, output: 20, cacheRead: 80, cacheCreate: 10),
+            UsageRow(
+                model: "gpt-5.5",
+                created: 110,
+                input: 100,
+                output: 20,
+                cacheRead: 80,
+                cacheCreate: 0,
+                appType: "codex",
+                dataSource: "codex_session"
+            ),
             UsageRow(model: "deepseek-v4-pro", created: 110, input: 10, output: 5, cacheRead: 7, cacheCreate: 3),
             UsageRow(
                 model: "claude-sonnet-4-6",
                 created: 110,
-                input: 30,
+                input: 90,
                 output: 4,
                 cacheRead: 50,
                 cacheCreate: 6,
-                pricingModel: "gpt-5.4"
+                appType: "claude-desktop",
+                pricingModel: "gpt-5.4",
+                dataSource: "proxy"
+            ),
+            UsageRow(
+                model: "codex-deepseek",
+                created: 110,
+                input: 70,
+                output: 3,
+                cacheRead: 60,
+                cacheCreate: 0,
+                appType: "codex",
+                pricingModel: "deepseek-v4-flash",
+                dataSource: "proxy"
+            ),
+            UsageRow(
+                model: "session-gpt",
+                created: 110,
+                input: 30,
+                output: 2,
+                cacheRead: 20,
+                cacheCreate: 1,
+                pricingModel: "gpt-5.4",
+                dataSource: "session_log"
             ),
         ])
         defer { try? FileManager.default.removeItem(atPath: path) }
@@ -145,13 +180,25 @@ final class UsageRepositoryTests: XCTestCase {
         let usages = try repo.fetchModelUsages(window: DateWindow(start: 100, end: 200))
 
         let gpt = try XCTUnwrap(usages.first { $0.model == "gpt-5.5" })
+        XCTAssertEqual(gpt.input, 20)
         XCTAssertEqual(gpt.total, 120)
+        XCTAssertEqual(gpt.cacheRate, 0.8, accuracy: 0.0001)
 
         let deepseek = try XCTUnwrap(usages.first { $0.model == "deepseek-v4-pro" })
+        XCTAssertEqual(deepseek.input, 10)
         XCTAssertEqual(deepseek.total, 25)
 
         let proxiedGPT = try XCTUnwrap(usages.first { $0.model == "claude-sonnet-4-6" })
-        XCTAssertEqual(proxiedGPT.total, 34)
+        XCTAssertEqual(proxiedGPT.input, 90)
+        XCTAssertEqual(proxiedGPT.total, 150)
+
+        let codexDeepSeek = try XCTUnwrap(usages.first { $0.model == "codex-deepseek" })
+        XCTAssertEqual(codexDeepSeek.input, 10)
+        XCTAssertEqual(codexDeepSeek.total, 73)
+
+        let sessionGPT = try XCTUnwrap(usages.first { $0.model == "session-gpt" })
+        XCTAssertEqual(sessionGPT.input, 30)
+        XCTAssertEqual(sessionGPT.total, 53)
     }
 
     func test_fetchSummary_forWindow() throws {
@@ -171,26 +218,59 @@ final class UsageRepositoryTests: XCTestCase {
 
     func test_fetchSummary_appliesModelSpecificTotalSemantics() throws {
         let path = try makeTempDB(rows: [
-            UsageRow(model: "gpt-5.5", created: 1000, input: 100, output: 20, cacheRead: 80, cacheCreate: 10),
+            UsageRow(
+                model: "gpt-5.5",
+                created: 1000,
+                input: 100,
+                output: 20,
+                cacheRead: 80,
+                cacheCreate: 0,
+                appType: "codex",
+                dataSource: "codex_session"
+            ),
             UsageRow(model: "deepseek-v4-pro", created: 1000, input: 10, output: 5, cacheRead: 7, cacheCreate: 3),
             UsageRow(
                 model: "claude-sonnet-4-6",
                 created: 1000,
-                input: 30,
+                input: 90,
                 output: 4,
                 cacheRead: 50,
                 cacheCreate: 6,
-                pricingModel: "gpt-5.4"
+                appType: "claude-desktop",
+                pricingModel: "gpt-5.4",
+                dataSource: "proxy"
+            ),
+            UsageRow(
+                model: "codex-deepseek",
+                created: 1000,
+                input: 70,
+                output: 3,
+                cacheRead: 60,
+                cacheCreate: 0,
+                appType: "codex",
+                pricingModel: "deepseek-v4-flash",
+                dataSource: "proxy"
+            ),
+            UsageRow(
+                model: "session-gpt",
+                created: 1000,
+                input: 30,
+                output: 2,
+                cacheRead: 20,
+                cacheCreate: 1,
+                pricingModel: "gpt-5.4",
+                dataSource: "session_log"
             ),
         ])
         defer { try? FileManager.default.removeItem(atPath: path) }
         let repo = UsageRepository(dbPath: path)
         let s = try repo.fetchSummary(window: DateWindow(start: 0, end: 2000))
-        XCTAssertEqual(s.input, 140)
-        XCTAssertEqual(s.output, 29)
-        XCTAssertEqual(s.cacheRead, 137)
-        XCTAssertEqual(s.cacheCreate, 19)
-        XCTAssertEqual(s.total, 179)
+        XCTAssertEqual(s.input, 160)
+        XCTAssertEqual(s.output, 34)
+        XCTAssertEqual(s.cacheRead, 217)
+        XCTAssertEqual(s.cacheCreate, 10)
+        XCTAssertEqual(s.total, 421)
+        XCTAssertEqual(s.cacheRate, 217.0 / 377.0, accuracy: 0.0001)
     }
 
     func test_fetchTrend_groupsByDayAndModel() throws {

@@ -12,7 +12,7 @@ struct SummaryView: View {
 
             Divider()
 
-            // 输入是否包含缓存读依数据源不同；总计口径由仓库层统一归一化。
+            // input 已在仓库层归一化为未命中缓存输入；展示输入包含缓存写。
             HStack(alignment: .top) {
                 statCol(formatTokens(summary.total), "总计", accent: true)
                 Spacer()
