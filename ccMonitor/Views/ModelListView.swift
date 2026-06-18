@@ -13,12 +13,11 @@ struct ModelListView: View {
     let dbPath: String
 
     var body: some View {
-        let shown = ModelUsage.topFive(from: usages)
-        return VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("模型用量明细")
                 .font(UB.Font.sectionTitle)
                 .padding(.bottom, UB.Spacing.xl)
-            ForEach(Array(shown.enumerated()), id: \.element.id) { index, u in
+            ForEach(Array(usages.enumerated()), id: \.element.id) { index, u in
                 if index > 0 {
                     UBDivider(style: .hairline).padding(.vertical, UB.Spacing.l)
                 }

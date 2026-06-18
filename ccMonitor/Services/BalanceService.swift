@@ -44,8 +44,7 @@ enum BalanceService {
     }
 
     private static func fetchDeepSeek(rule: BalanceRule, dbPath: String) async throws -> (Double, String) {
-        let resolved = resolveCredentials(rule: rule, dbPath: dbPath)
-        let apiKey = resolved.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let apiKey = resolveAPIKey(rule: rule, dbPath: dbPath).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !apiKey.isEmpty else { throw BalanceExecutionError.missingAPIKey }
 
         guard let url = URL(string: "https://api.deepseek.com/user/balance") else {
@@ -94,16 +93,13 @@ enum BalanceService {
         return (amount, currency)
     }
 
-    private static func resolveCredentials(rule: BalanceRule, dbPath: String) -> (baseURL: String, apiKey: String) {
+    private static func resolveAPIKey(rule: BalanceRule, dbPath: String) -> String {
         let explicitKey = rule.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         if !explicitKey.isEmpty {
-            return (rule.baseURL, explicitKey)
+            return explicitKey
         }
 
-        guard let credentials = try? DeepSeekCredentialResolver(dbPath: dbPath).resolve() else {
-            return (rule.baseURL, "")
-        }
-        return credentials
+        return (try? DeepSeekCredentialResolver(dbPath: dbPath).resolve()) ?? ""
     }
 
     private static func runPython(rule: BalanceRule, model: String) async throws -> (Double, String) {

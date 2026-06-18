@@ -51,6 +51,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.applyAppearance(settings.appearanceMode, systemIsDark: systemIsDark)
             }
             .store(in: &cancellables)
+        settings.$refreshIntervalMinutes
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.store.startTimer()
+            }
+            .store(in: &cancellables)
         DistributedNotificationCenter.default().addObserver(
             self,
             selector: #selector(systemAppearanceDidChange),

@@ -19,7 +19,6 @@ struct BalanceRule: Codable, Equatable, Identifiable {
     var name: String
     var kind: BalanceRuleKind
     var apiKey: String
-    var baseURL: String
     var currency: String
     var script: String
 
@@ -27,14 +26,12 @@ struct BalanceRule: Codable, Equatable, Identifiable {
          name: String,
          kind: BalanceRuleKind,
          apiKey: String = "",
-         baseURL: String = "",
          currency: String = "CNY",
          script: String = "") {
         self.id = id
         self.name = name
         self.kind = kind
         self.apiKey = apiKey
-        self.baseURL = baseURL
         self.currency = currency
         self.script = script
     }
@@ -46,7 +43,6 @@ struct BalanceRule: Codable, Equatable, Identifiable {
                     name: "DeepSeek 余额",
                     kind: .deepseek,
                     apiKey: apiKey,
-                    baseURL: "https://api.deepseek.com",
                     currency: currency,
                     script: "")
     }

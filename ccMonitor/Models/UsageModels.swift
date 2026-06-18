@@ -33,15 +33,6 @@ struct ModelUsage: Identifiable, Equatable {
          + Double(cacheCreate) * p.cacheCreate) / 1_000_000
     }
 
-    /// 模型列表展示筛选：按当前范围总用量降序，固定最多 5 个。
-    static func topFive(from all: [ModelUsage]) -> [ModelUsage] {
-        all.sorted {
-            if $0.total == $1.total { return $0.model < $1.model }
-            return $0.total > $1.total
-        }
-        .prefix(5)
-        .map { $0 }
-    }
 }
 
 /// ② 汇总区，跟随时间范围，不分模型，input 为未命中缓存输入。
@@ -68,7 +59,7 @@ struct SummaryStats: Equatable {
     static let empty = SummaryStats(input: 0, output: 0, cacheRead: 0, cacheCreate: 0)
 }
 
-/// ③ 折线图一个点。
+/// ③ 趋势图一个点。
 struct TrendPoint: Identifiable, Equatable {
     var id: String { day + "|" + model }
     let day: String        // yyyy-MM-dd

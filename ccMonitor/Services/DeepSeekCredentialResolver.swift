@@ -2,35 +2,43 @@ import Foundation
 
 struct DeepSeekCredentialResolver {
     private let dbPath: String
+    private struct Candidate {
+        let baseURL: String
+        let apiKey: String
+    }
 
     init(dbPath: String) {
         self.dbPath = dbPath
     }
 
-    func resolve() throws -> (baseURL: String, apiKey: String) {
+    func resolve() throws -> String {
         let db = try SQLiteDatabase(path: dbPath, readonly: true)
         defer { db.close() }
 
-        var candidates: [(baseURL: String, apiKey: String, score: Int)] = []
+        var candidates: [(apiKey: String, score: Int)] = []
         try db.query(Self.deepSeekProviderSQL) { row in
             guard let settings = row.string(2),
-                  let candidate = Self.parse(settingsConfig: settings) else {
+                  let candidate = Self.parseCandidate(settingsConfig: settings) else {
                 return
             }
 
             let appType = row.string(0)?.lowercased() ?? ""
             let name = row.string(1)?.lowercased() ?? ""
             let score = Self.score(appType: appType, name: name, baseURL: candidate.baseURL)
-            candidates.append((candidate.baseURL, candidate.apiKey, score))
+            candidates.append((candidate.apiKey, score))
         }
 
         guard let best = candidates.sorted(by: { $0.score > $1.score }).first else {
             throw BalanceExecutionError.missingAPIKey
         }
-        return (best.baseURL, best.apiKey)
+        return best.apiKey
     }
 
-    static func parse(settingsConfig: String) -> (baseURL: String, apiKey: String)? {
+    static func parse(settingsConfig: String) -> String? {
+        parseCandidate(settingsConfig: settingsConfig)?.apiKey
+    }
+
+    private static func parseCandidate(settingsConfig: String) -> Candidate? {
         guard let data = settingsConfig.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return nil
@@ -59,7 +67,7 @@ struct DeepSeekCredentialResolver {
             return nil
         }
 
-        return (normalizedBaseURL(baseURL), apiKey)
+        return Candidate(baseURL: normalizedBaseURL(baseURL), apiKey: apiKey)
     }
 
     private static let deepSeekProviderSQL = """

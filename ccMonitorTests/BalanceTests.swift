@@ -27,10 +27,9 @@ final class BalanceTests: XCTestCase {
         }
         """
 
-        let credentials = DeepSeekCredentialResolver.parse(settingsConfig: config)
+        let apiKey = DeepSeekCredentialResolver.parse(settingsConfig: config)
 
-        XCTAssertEqual(credentials?.apiKey, "sk-test-claude")
-        XCTAssertEqual(credentials?.baseURL, "https://api.deepseek.com")
+        XCTAssertEqual(apiKey, "sk-test-claude")
     }
 
     func test_deepSeekCredentialResolver_parsesCodexProviderConfig() {
@@ -43,10 +42,9 @@ final class BalanceTests: XCTestCase {
         }
         """
 
-        let credentials = DeepSeekCredentialResolver.parse(settingsConfig: config)
+        let apiKey = DeepSeekCredentialResolver.parse(settingsConfig: config)
 
-        XCTAssertEqual(credentials?.apiKey, "sk-test-codex")
-        XCTAssertEqual(credentials?.baseURL, "https://api.deepseek.com")
+        XCTAssertEqual(apiKey, "sk-test-codex")
     }
 
     @MainActor
