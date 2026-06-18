@@ -32,7 +32,7 @@ struct SettingsView: View {
             sidebar
             detail
         }
-        .frame(width: 660, height: 460)
+        .frame(width: 760, height: 500)
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme(systemIsDark: settings.systemAppearanceIsDark))
         .onAppear(perform: loadModels)
     }
@@ -500,6 +500,16 @@ private struct BalanceRuleEditor: View {
         draft.id == BalanceRule.deepseekBuiltinID
     }
 
+    private var scriptBinding: Binding<String> {
+        Binding(
+            get: { draft.script },
+            set: {
+                draft.script = normalizeCodeText($0)
+                validationError = nil
+            }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: UB.Spacing.xl) {
             Text("余额逻辑")
@@ -545,11 +555,12 @@ private struct BalanceRuleEditor: View {
                         Text(draft.kind == .python ? "Python 脚本" : "JS 查询模板")
                             .font(UB.Font.caption)
                             .foregroundStyle(.secondary)
-                        TextEditor(text: $draft.script)
+                        TextEditor(text: scriptBinding)
                             .font(.system(size: 12, design: .monospaced))
                             .frame(minHeight: draft.kind == .python ? 150 : 220)
                             .disabled(isValidating)
                             .onChange(of: draft.script) { _ in validationError = nil }
+                            .onAppear(perform: disableTextSubstitutionsInWindow)
                             .overlay(
                                 RoundedRectangle(cornerRadius: UB.Radius.control)
                                     .stroke(
@@ -583,7 +594,7 @@ private struct BalanceRuleEditor: View {
             }
         }
         .padding(20)
-        .frame(width: 460)
+        .frame(width: 720, height: 640)
     }
 
     private func labeledField<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
@@ -637,7 +648,39 @@ private struct BalanceRuleEditor: View {
             rule.baseUrl = ""
             rule.apiKey = ""
         }
+        rule.script = normalizeCodeText(rule.script)
         return rule
+    }
+
+    private func normalizeCodeText(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "“", with: "\"")
+            .replacingOccurrences(of: "”", with: "\"")
+            .replacingOccurrences(of: "＂", with: "\"")
+            .replacingOccurrences(of: "‘", with: "'")
+            .replacingOccurrences(of: "’", with: "'")
+            .replacingOccurrences(of: "＇", with: "'")
+    }
+
+    private func disableTextSubstitutionsInWindow() {
+        DispatchQueue.main.async {
+            NSApp.keyWindow?.contentView?.disableTextSubstitutions()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.keyWindow?.contentView?.disableTextSubstitutions()
+        }
+    }
+}
+
+private extension NSView {
+    func disableTextSubstitutions() {
+        if let textView = self as? NSTextView {
+            textView.isAutomaticQuoteSubstitutionEnabled = false
+            textView.isAutomaticDashSubstitutionEnabled = false
+            textView.isAutomaticTextReplacementEnabled = false
+            textView.isAutomaticSpellingCorrectionEnabled = false
+        }
+        subviews.forEach { $0.disableTextSubstitutions() }
     }
 }
 
