@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// 胶囊进度条（UsageBoard 风格）：主色淡底 + 主色填充 + 居中黑色加粗文字。
-/// 文字固定黑色（CLAUDE.md 硬性要求：任意背景下最佳对比度）。
+/// 胶囊进度条（UsageBoard 风格）：主色淡底 + 主色填充 + 居中加粗文字。
 struct UsageProgressBar: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let fraction: Double      // 0...1
     let text: String          // 叠加显示的文字，如 "12.5K / 1.2M"
     var height: CGFloat = 18
@@ -20,7 +21,7 @@ struct UsageProgressBar: View {
                 Text(text)
                     .font(.system(size: 11, weight: .bold))
                     .monospacedDigit()
-                    .foregroundColor(.black)   // 黑色，任意背景对比度（CLAUDE.md 要求）
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
