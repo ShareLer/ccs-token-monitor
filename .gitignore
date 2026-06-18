@@ -1,7 +1,12 @@
 .DS_Store
 build/
+dist/
 DerivedData/
+ccMonitor.xcodeproj/
 *.xcuserstate
 xcuserdata/
 .swiftpm/
 *.xcresult
+/task_plan.md
+/findings.md
+/progress.md
