@@ -184,8 +184,8 @@ struct ModelListView: View {
             return "未刷新"
         case .loading:
             return "查询中"
-        case .value(let value, let currency):
-            return formatBalance(value, currency: currency)
+        case .value(let value, _):
+            return formatBalance(value, currency: "CNY")
         case .failed:
             return "失败"
         }
@@ -198,8 +198,8 @@ struct ModelListView: View {
         switch modelBalance.state {
         case .failed(let message):
             return message
-        case .value(let value, let currency):
-            return "余额 \(formatBalance(value, currency: currency))"
+        case .value(let value, _):
+            return "余额 \(formatBalance(value, currency: "CNY"))"
         case .loading:
             return "正在查询余额"
         case .idle:
