@@ -2,24 +2,30 @@
 
 macOS 菜单栏应用，从 `~/.cc-switch/cc-switch.db` 只读读取 token 用量并可视化。
 
+## 界面预览
+
+<p align="center">
+  <img src="docs/images/ccmonitor-ui.png" alt="ccMonitor UI 展示" width="420">
+</p>
+
 ## 功能
 
-- **按模型展示**当前时间范围内用量最多的 5 个模型、缓存率、成本和可配置余额（成本用你自设的单价重算，不读数据库里的成本）
-- 每个模型一个进度条，显示该范围内 token 用量，进度条上叠加黑色加粗文字保证对比度
-- **时间范围**（当日 / 7天 / 30天 / 自定义）联动汇总统计和模型用量明细：总 token、输入、输出、缓存率 + 缓存率进度条
-- **最近 30 天用量趋势**（按天堆叠柱状图，鼠标悬停查看某天全部模型数值）
-- **7×52 Token 活动热力图**（按日总 token 动态分 5 档着色，底部标月份）
-- **设置面板**：数据库路径、实时拉取有历史数据的模型列表、每模型 4 类单价（输入/输出/缓存读/缓存写，$/1M token）、余额获取逻辑、刷新间隔（5/10/15/30 分钟）
+- **菜单栏总 Token**：菜单栏直接显示当前统计口径下的总 Token，点击打开完整面板。
+- **总 Token 汇总**：按当日 / 7 天 / 30 天 / 自定义时间范围展示总计、缓存、输入、输出和缓存率。
+- **模型用量明细**：展示当前时间范围内用量 Top 5 模型的 Token 占比、缓存率、消费和余额；点击模型行可展开总计 / 缓存 / 输入 / 输出明细。
+- **最近 30 天趋势**：按天堆叠展示各模型用量，鼠标悬停查看某天的模型明细。
+- **Token 活动热力图**：展示本年度每日总 Token，可在设置中选择完整适配或横向滚动。
+- **价格与余额**：支持为每个模型配置输入 / 输出 / 缓存读 / 缓存写单价，并绑定 DeepSeek 内置余额或自定义 Python 余额脚本。
+- **外观模式**：支持跟随系统、浅色、深色三种模式，可从标题栏快速切换。
+- **截图导出**：标题栏一键保存完整统计面板长图，保存目录可在设置中配置。
+- **刷新设置**：支持手动刷新、自动刷新倒计时，以及 5 / 10 / 15 / 30 分钟刷新间隔。
 
-## 关键说明
+## 数据说明
 
-- 应用以**只读**方式访问 `cc-switch.db`，绝不写入。
-- 单价与设置存于 app 自己的 `UserDefaults`，不写回 cc-switch 数据库。
-- 总 token 使用展示口径与 cc-switch 官方保持一致：`app_type IN ('codex', 'gemini')` 时，`input_tokens` 已含缓存读，会先扣除 `cache_read_tokens` 得到未命中输入；其它 app_type 的 `input_tokens` 已是未命中输入。总量统一为 `未命中输入 + output + cache_read + cache_create`。
+- 应用以**只读**方式访问 `cc-switch.db`，单价、余额规则和界面设置存于 app 自己的 `UserDefaults`。
+- 总 Token 口径与 cc-switch 保持一致：`app_type IN ('codex', 'gemini')` 时会先从 `input_tokens` 扣除 `cache_read_tokens` 得到未命中输入；总量为 `未命中输入 + output + cache_read + cache_create`。
 - 缓存率 = `缓存读 / (未命中输入 + 缓存写 + 缓存读)`。
-- 聚合查询读取 `proxy_request_logs` 中指定时间范围内的记录，不按 `data_source` 或供应商分组/过滤，直接按模型展示。
-- 余额规则存于 app 自己的 `UserDefaults`。模型名包含 `deepseek` 时默认使用 DeepSeek 内置余额查询，也可在设置里绑定其它规则或选择“不显示”。DeepSeek 内置逻辑固定请求官方 `https://api.deepseek.com/user/balance`，API Key 可手动填写，也会尝试从 cc-switch 的 DeepSeek provider 配置中读取。
-- 自定义 Python 余额脚本通过本机 `python3 -c` 执行，可读取环境变量 `CCS_MODEL` / `CCS_BALANCE_API_KEY` / `CCS_BALANCE_CURRENCY`，stdout 返回数字或 JSON（如 `{"amount": 12.3}`）。
+- 聚合查询读取 `proxy_request_logs` 中指定时间范围内的记录，不按 `data_source` 或供应商分组。
 
 ## 依赖
 
