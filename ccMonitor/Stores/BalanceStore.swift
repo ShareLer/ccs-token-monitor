@@ -20,9 +20,14 @@ final class BalanceStore: ObservableObject {
     }
 
     @Published private(set) var balances: [String: ModelBalance] = [:]
+    private let fetchBalance: @Sendable (BalanceRule, String, String) async -> ModelBalance
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard,
+         fetchBalance: @escaping @Sendable (BalanceRule, String, String) async -> ModelBalance = { rule, model, dbPath in
+             await BalanceService.fetch(rule: rule, model: model, dbPath: dbPath)
+         }) {
         self.defaults = defaults
+        self.fetchBalance = fetchBalance
         if let data = defaults.data(forKey: Keys.rules),
            let decoded = try? JSONDecoder().decode([BalanceRule].self, from: data) {
             self.rules = BalanceStore.ensureBuiltins(in: decoded)
@@ -85,24 +90,35 @@ final class BalanceStore: ObservableObject {
         let uniqueModels = Array(Set(models))
         guard !uniqueModels.isEmpty else { return }
 
-        for model in uniqueModels where effectiveRule(for: model) != nil {
+        var ruleRequests: [String: (rule: BalanceRule, models: [String])] = [:]
+
+        for model in uniqueModels {
+            guard let rule = effectiveRule(for: model) else {
+                balances.removeValue(forKey: model)
+                continue
+            }
+
             balances[model] = ModelBalance(state: .loading, updatedAt: balances[model]?.updatedAt)
+            if ruleRequests[rule.id] == nil {
+                ruleRequests[rule.id] = (rule, [])
+            }
+            ruleRequests[rule.id]?.models.append(model)
         }
 
-        await withTaskGroup(of: (String, ModelBalance).self) { group in
-            for model in uniqueModels {
-                guard let rule = effectiveRule(for: model) else {
-                    balances.removeValue(forKey: model)
-                    continue
-                }
+        let fetchBalance = self.fetchBalance
+        await withTaskGroup(of: [(String, ModelBalance)].self) { group in
+            for request in ruleRequests.values {
+                guard let representativeModel = request.models.first else { continue }
                 group.addTask {
-                    let result = await BalanceService.fetch(rule: rule, model: model, dbPath: dbPath)
-                    return (model, result)
+                    let result = await fetchBalance(request.rule, representativeModel, dbPath)
+                    return request.models.map { ($0, result) }
                 }
             }
 
-            for await (model, balance) in group {
-                balances[model] = balance
+            for await results in group {
+                for (model, balance) in results {
+                    balances[model] = balance
+                }
             }
         }
     }

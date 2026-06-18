@@ -49,7 +49,7 @@ struct DashboardView: View {
                                   pricing: store.pricing,
                                   balance: store.balance,
                                   dbPath: settings.dbPath)
-                    TrendChartView(points: store.trend)
+                    TrendChartView(points: store.trend, displayMode: settings.trendChartDisplayMode)
                     HeatmapView(days: store.heatmap, fitMode: settings.heatmapFitMode)
                 }
                 .padding(UB.Spacing.xxl)
@@ -132,6 +132,7 @@ struct DashboardView: View {
             trend: store.trend,
             heatmap: store.heatmap,
             heatmapFitMode: settings.heatmapFitMode,
+            trendChartDisplayMode: settings.trendChartDisplayMode,
             appearanceMode: settings.appearanceMode,
             systemAppearanceIsDark: settings.systemAppearanceIsDark
         )

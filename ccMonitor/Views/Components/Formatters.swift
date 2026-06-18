@@ -14,8 +14,8 @@ func formatMenuBarTokens(_ n: Int) -> String {
     return "\(n)"
 }
 
-func formatCost(_ usd: Double) -> String {
-    return String(format: "$%.2f", usd)
+func formatCost(_ amount: Double) -> String {
+    return String(format: "¥%.2f", amount)
 }
 
 func formatBalance(_ amount: Double, currency: String) -> String {

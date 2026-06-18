@@ -14,6 +14,7 @@ struct SnapshotView: View {
     let trend: [TrendPoint]
     let heatmap: [HeatmapDay]
     let heatmapFitMode: HeatmapFitMode
+    let trendChartDisplayMode: TrendChartDisplayMode
     let appearanceMode: AppAppearanceMode
     let systemAppearanceIsDark: Bool
 
@@ -32,7 +33,7 @@ struct SnapshotView: View {
                           pricing: pricing,
                           balance: balance,
                           dbPath: dbPath)
-            TrendChartView(points: trend)
+            TrendChartView(points: trend, displayMode: trendChartDisplayMode)
             HeatmapView(days: heatmap, fitMode: heatmapFitMode)
         }
         .padding(UB.Spacing.xxl)
@@ -64,6 +65,7 @@ struct SnapshotView: View {
         },
         heatmap: [],
         heatmapFitMode: .fit,
+        trendChartDisplayMode: .bar,
         appearanceMode: .system,
         systemAppearanceIsDark: false
     )

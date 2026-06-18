@@ -2,6 +2,7 @@ import Foundation
 
 enum BalanceService {
     private static let pythonTimeoutSeconds: TimeInterval = 15
+    private static let pythonValidationTimeoutSeconds: TimeInterval = 5
 
     static func fetch(rule: BalanceRule, model: String, dbPath: String) async -> ModelBalance {
         do {
@@ -10,7 +11,7 @@ enum BalanceService {
             case .deepseek:
                 value = try await fetchDeepSeek(rule: rule, dbPath: dbPath)
             case .python:
-                value = try await runPython(rule: rule, model: model)
+                value = try await runPython(rule: rule)
             }
             return ModelBalance(state: .value(value.amount, currency: value.currency),
                                 updatedAt: Date())
@@ -41,6 +42,34 @@ enum BalanceService {
         }
 
         throw BalanceExecutionError.invalidAmount(trimmed)
+    }
+
+    static func validatePythonSyntax(_ script: String) async throws {
+        let script = script.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !script.isEmpty else { throw BalanceExecutionError.missingScript }
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ccMonitor-python-check-\(UUID().uuidString)", isDirectory: true)
+        let scriptURL = tempDir.appendingPathComponent("balance_script.py")
+
+        do {
+            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+        } catch {
+            throw BalanceExecutionError.script(error.localizedDescription)
+        }
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let result = try await runProcess(
+            arguments: ["python3", "-m", "py_compile", scriptURL.path],
+            timeout: pythonValidationTimeoutSeconds
+        )
+        guard result.status == 0 else {
+            let message = (result.stderr.isEmpty ? "语法检查失败" : result.stderr)
+                .replacingOccurrences(of: scriptURL.path, with: "Python 脚本")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            throw BalanceExecutionError.script(message)
+        }
     }
 
     private static func fetchDeepSeek(rule: BalanceRule, dbPath: String) async throws -> (Double, String) {
@@ -77,10 +106,9 @@ enum BalanceService {
         }
 
         let infos = json["balance_infos"] as? [[String: Any]] ?? []
-        let preferredCurrency = rule.currency.trimmingCharacters(in: .whitespacesAndNewlines)
+        let preferredCurrency = "CNY"
         let info = infos.first { item in
-            guard !preferredCurrency.isEmpty,
-                  let currency = item["currency"] as? String else { return false }
+            guard let currency = item["currency"] as? String else { return false }
             return currency.caseInsensitiveCompare(preferredCurrency) == .orderedSame
         } ?? infos.first
 
@@ -89,7 +117,7 @@ enum BalanceService {
         }
 
         let amount = try numericField(info["total_balance"])
-        let currency = (info["currency"] as? String) ?? (preferredCurrency.isEmpty ? "CNY" : preferredCurrency)
+        let currency = (info["currency"] as? String) ?? preferredCurrency
         return (amount, currency)
     }
 
@@ -102,40 +130,60 @@ enum BalanceService {
         return (try? DeepSeekCredentialResolver(dbPath: dbPath).resolve()) ?? ""
     }
 
-    private static func runPython(rule: BalanceRule, model: String) async throws -> (Double, String) {
+    private static func runPython(rule: BalanceRule) async throws -> (Double, String) {
         let script = rule.script.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !script.isEmpty else { throw BalanceExecutionError.missingScript }
 
+        let result = try await runProcess(
+            arguments: ["python3", "-c", script],
+            environment: ["CCS_BALANCE_RULE_NAME": rule.name],
+            timeout: pythonTimeoutSeconds
+        )
+
+        guard result.status == 0 else {
+            throw BalanceExecutionError.script(result.stderr.isEmpty ? "退出码 \(result.status)" : result.stderr)
+        }
+
+        let amount = try parseAmount(result.stdout)
+        return (amount, "CNY")
+    }
+
+    private struct ProcessResult {
+        let status: Int32
+        let stdout: String
+        let stderr: String
+    }
+
+    private final class ResumeGate: @unchecked Sendable {
+        private let lock = NSLock()
+        private var didResume = false
+
+        func resume(_ body: () -> Void) {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !didResume else { return }
+            didResume = true
+            body()
+        }
+    }
+
+    private static func runProcess(arguments: [String],
+                                   environment: [String: String] = [:],
+                                   timeout: TimeInterval) async throws -> ProcessResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["python3", "-c", script]
-        process.environment = ProcessInfo.processInfo.environment.merging([
-            "CCS_MODEL": model,
-            "CCS_BALANCE_RULE_NAME": rule.name,
-            "CCS_BALANCE_API_KEY": rule.apiKey,
-            "CCS_BALANCE_CURRENCY": rule.currency
-        ]) { _, new in new }
+        process.arguments = arguments
+        if !environment.isEmpty {
+            process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
+        }
 
         let output = Pipe()
         let errorPipe = Pipe()
         process.standardOutput = output
         process.standardError = errorPipe
 
-        final class ResumeGate: @unchecked Sendable {
-            private let lock = NSLock()
-            private var didResume = false
-
-            func resume(_ body: () -> Void) {
-                lock.lock()
-                defer { lock.unlock() }
-                guard !didResume else { return }
-                didResume = true
-                body()
-            }
-        }
-
         let gate = ResumeGate()
-        let deadline = DispatchTime.now() + pythonTimeoutSeconds
+        let deadline = DispatchTime.now() + timeout
 
         return try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { proc in
@@ -143,17 +191,9 @@ enum BalanceService {
                 let stderr = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
                 gate.resume {
-                    if proc.terminationStatus != 0 {
-                        continuation.resume(throwing: BalanceExecutionError.script(stderr.isEmpty ? "退出码 \(proc.terminationStatus)" : stderr))
-                        return
-                    }
-
-                    do {
-                        let amount = try parseAmount(stdout)
-                        continuation.resume(returning: (amount, rule.currency.isEmpty ? "USD" : rule.currency))
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
+                    continuation.resume(returning: ProcessResult(status: proc.terminationStatus,
+                                                                 stdout: stdout,
+                                                                 stderr: stderr))
                 }
             }
 
@@ -170,7 +210,7 @@ enum BalanceService {
                 guard process.isRunning else { return }
                 process.terminate()
                 gate.resume {
-                    continuation.resume(throwing: BalanceExecutionError.script("执行超时（\(Int(pythonTimeoutSeconds)) 秒）"))
+                    continuation.resume(throwing: BalanceExecutionError.script("执行超时（\(Int(timeout)) 秒）"))
                 }
             }
         }

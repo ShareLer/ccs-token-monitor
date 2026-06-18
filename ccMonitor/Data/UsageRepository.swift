@@ -82,7 +82,8 @@ struct UsageRepository {
     /// ③ 趋势：按天 × 模型聚合总 token。
     func fetchTrend(window: DateWindow) throws -> [TrendPoint] {
         try withDB { db in
-            var pts: [TrendPoint] = []
+            var totalsByDayModel: [String: [String: Int]] = [:]
+            var modelTotals: [String: Int] = [:]
             try db.query("""
                 SELECT date(created_at,'unixepoch','localtime') AS day, model,
                        SUM(\(Self.displayTotalSQL))
@@ -90,10 +91,46 @@ struct UsageRepository {
                 WHERE created_at >= ? AND created_at < ?
                 GROUP BY day, model ORDER BY day;
             """, ints: [window.start, window.end]) { row in
-                pts.append(TrendPoint(day: row.string(0) ?? "", model: row.string(1) ?? "", total: row.int(2)))
+                let day = row.string(0) ?? ""
+                let model = row.string(1) ?? ""
+                let total = row.int(2)
+                guard !day.isEmpty, !model.isEmpty else { return }
+                totalsByDayModel[day, default: [:]][model] = total
+                modelTotals[model, default: 0] += total
+            }
+
+            let days = Self.days(in: window)
+            let models = modelTotals.sorted {
+                $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value
+            }.map(\.key)
+
+            var pts: [TrendPoint] = []
+            for day in days {
+                for model in models {
+                    pts.append(TrendPoint(day: day, model: model, total: totalsByDayModel[day]?[model] ?? 0))
+                }
             }
             return pts
         }
+    }
+
+    private static func days(in window: DateWindow) -> [String] {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone.current
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = calendar.timeZone
+
+        let end = Date(timeIntervalSince1970: TimeInterval(window.end))
+        var day = calendar.startOfDay(for: Date(timeIntervalSince1970: TimeInterval(window.start)))
+        var days: [String] = []
+        while day < end {
+            days.append(formatter.string(from: day))
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return days
     }
 
     /// ④ 热力图：按天聚合总 token。

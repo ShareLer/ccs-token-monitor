@@ -35,6 +35,7 @@ final class SnapshotViewTests: XCTestCase {
             trend: [],
             heatmap: [],
             heatmapFitMode: .fit,
+            trendChartDisplayMode: .bar,
             appearanceMode: appearanceMode,
             systemAppearanceIsDark: systemIsDark,
             width: 180

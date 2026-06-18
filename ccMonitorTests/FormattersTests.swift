@@ -26,10 +26,10 @@ final class FormattersTests: XCTestCase {
         XCTAssertEqual(formatMenuBarTokens(842), "842")
     }
     func test_formatCost() {
-        XCTAssertEqual(formatCost(74.7382), "$74.74")
+        XCTAssertEqual(formatCost(74.7382), "¥74.74")
     }
     func test_formatCost_zero() {
-        XCTAssertEqual(formatCost(0), "$0.00")
+        XCTAssertEqual(formatCost(0), "¥0.00")
     }
     func test_formatBalance() {
         XCTAssertEqual(formatBalance(12.3, currency: "CNY"), "¥12.30")

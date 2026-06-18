@@ -7,6 +7,21 @@ enum HeatmapFitMode: String {
     case scroll   // 固定格子大小，可横向滑动
 }
 
+/// 近30日趋势图展示模式。
+enum TrendChartDisplayMode: String, CaseIterable, Identifiable {
+    case bar
+    case line
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .bar: return "柱状图"
+        case .line: return "折线图"
+        }
+    }
+}
+
 /// 应用外观模式。
 enum AppAppearanceMode: String, CaseIterable, Identifiable {
     case system
@@ -46,6 +61,7 @@ final class SettingsStore: ObservableObject {
         static let dbPath = "dbPath"
         static let refreshInterval = "refreshIntervalMinutes"
         static let heatmapFitMode = "heatmapFitMode"
+        static let trendChartDisplayMode = "trendChartDisplayMode"
         static let screenshotDir = "screenshotDir"
         static let appearanceMode = "appearanceMode"
     }
@@ -65,6 +81,10 @@ final class SettingsStore: ObservableObject {
     @Published var heatmapFitMode: HeatmapFitMode {
         didSet { defaults.set(heatmapFitMode.rawValue, forKey: Keys.heatmapFitMode) }
     }
+    /// 近30日趋势图展示模式（默认柱状图，保持现有行为）
+    @Published var trendChartDisplayMode: TrendChartDisplayMode {
+        didSet { defaults.set(trendChartDisplayMode.rawValue, forKey: Keys.trendChartDisplayMode) }
+    }
     /// 截图保存目录（空 = 未设置，截图时提醒用户先设置）
     @Published var screenshotDir: String {
         didSet { defaults.set(screenshotDir, forKey: Keys.screenshotDir) }
@@ -81,6 +101,7 @@ final class SettingsStore: ObservableObject {
         let saved = defaults.integer(forKey: Keys.refreshInterval)
         self.refreshIntervalMinutes = saved == 0 ? 5 : saved
         self.heatmapFitMode = HeatmapFitMode(rawValue: defaults.string(forKey: Keys.heatmapFitMode) ?? "") ?? .fit
+        self.trendChartDisplayMode = TrendChartDisplayMode(rawValue: defaults.string(forKey: Keys.trendChartDisplayMode) ?? "") ?? .bar
         self.screenshotDir = defaults.string(forKey: Keys.screenshotDir) ?? ""
         self.appearanceMode = AppAppearanceMode(rawValue: defaults.string(forKey: Keys.appearanceMode) ?? "") ?? .system
         self.systemAppearanceIsDark = SettingsStore.currentSystemAppearanceIsDark()

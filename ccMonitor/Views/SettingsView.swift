@@ -177,6 +177,15 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented).labelsHidden()
             }
+            VStack(alignment: .leading, spacing: UB.Spacing.m) {
+                sectionHeader("近30日趋势")
+                Picker("", selection: $settings.trendChartDisplayMode) {
+                    ForEach(TrendChartDisplayMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented).labelsHidden()
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .ubCard()
@@ -217,7 +226,7 @@ struct SettingsView: View {
                 sectionHeader("余额获取逻辑", "DeepSeek 内置；自定义 Python 脚本需从 stdout 返回金额或 JSON")
                 Spacer()
                 Button {
-                    editingRule = BalanceRule(name: "自定义余额", kind: .python, currency: "USD", script: "print(0)")
+                    editingRule = BalanceRule(name: "自定义余额", kind: .python, currency: "CNY", script: "print(0)")
                 } label: {
                     Label("添加", systemImage: "plus")
                 }
@@ -245,7 +254,7 @@ struct SettingsView: View {
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 2) {
                 Text(rule.name).font(UB.Font.body).lineLimit(1)
-                Text("\(rule.kind.displayName) · \(rule.currency.isEmpty ? "USD" : rule.currency)")
+                Text(rule.kind.displayName)
                     .font(UB.Font.caption)
                     .foregroundStyle(.secondary)
             }
@@ -424,6 +433,8 @@ struct SettingsView: View {
 
 private struct BalanceRuleEditor: View {
     @State private var draft: BalanceRule
+    @State private var validationError: String?
+    @State private var isValidating = false
     let onCancel: () -> Void
     let onSave: (BalanceRule) -> Void
     @Environment(\.colorScheme) private var colorScheme
@@ -460,14 +471,11 @@ private struct BalanceRuleEditor: View {
                     .disabled(isBuiltinDeepSeek)
                 }
 
-                labeledField("币种") {
-                    TextField("USD / CNY", text: $draft.currency)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                labeledField(draft.kind == .deepseek ? "DeepSeek API Key" : "API Key 环境变量") {
-                    SecureField("sk-...", text: $draft.apiKey)
-                        .textFieldStyle(.roundedBorder)
+                if draft.kind == .deepseek {
+                    labeledField("DeepSeek API Key") {
+                        SecureField("sk-...", text: $draft.apiKey)
+                            .textFieldStyle(.roundedBorder)
+                    }
                 }
 
                 if draft.kind == .python {
@@ -478,6 +486,8 @@ private struct BalanceRuleEditor: View {
                         TextEditor(text: $draft.script)
                             .font(.system(size: 12, design: .monospaced))
                             .frame(minHeight: 150)
+                            .disabled(isValidating)
+                            .onChange(of: draft.script) { _ in validationError = nil }
                             .overlay(
                                 RoundedRectangle(cornerRadius: UB.Radius.control)
                                     .stroke(
@@ -485,9 +495,16 @@ private struct BalanceRuleEditor: View {
                                         lineWidth: UB.Canvas.lineWidth(.outline, for: colorScheme)
                                     )
                             )
-                        Text("可读取环境变量 CCS_MODEL / CCS_BALANCE_API_KEY / CCS_BALANCE_CURRENCY；stdout 返回数字或 {\"amount\": 12.3}。")
+                        Text("脚本按余额逻辑执行一次并分发给绑定模型；stdout 返回数字或 {\"amount\": 12.3}。")
                             .font(UB.Font.caption)
                             .foregroundStyle(.secondary)
+                        if let validationError {
+                            Text(validationError)
+                                .font(UB.Font.caption)
+                                .foregroundStyle(.red)
+                                .lineLimit(4)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
             }
@@ -495,9 +512,10 @@ private struct BalanceRuleEditor: View {
             HStack {
                 Spacer()
                 Button("取消") { onCancel() }
-                Button("保存") { onSave(normalized(draft)) }
+                    .disabled(isValidating)
+                Button(isValidating ? "检查中..." : "保存") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(isValidating || draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .padding(20)
@@ -513,15 +531,35 @@ private struct BalanceRuleEditor: View {
         }
     }
 
+    private func save() {
+        let rule = normalized(draft)
+        guard rule.kind == .python else {
+            onSave(rule)
+            return
+        }
+
+        validationError = nil
+        isValidating = true
+        Task { @MainActor in
+            do {
+                try await BalanceService.validatePythonSyntax(rule.script)
+                isValidating = false
+                onSave(rule)
+            } catch {
+                validationError = error.localizedDescription
+                isValidating = false
+            }
+        }
+    }
+
     private func normalized(_ rule: BalanceRule) -> BalanceRule {
         var rule = rule
         rule.name = rule.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        rule.currency = rule.currency.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        if rule.currency.isEmpty {
-            rule.currency = rule.kind == .deepseek ? "CNY" : "USD"
-        }
+        rule.currency = "CNY"
         if rule.kind == .deepseek {
             rule.script = ""
+        } else {
+            rule.apiKey = ""
         }
         return rule
     }

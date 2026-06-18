@@ -1,6 +1,6 @@
 import Foundation
 
-enum BalanceRuleKind: String, Codable, CaseIterable, Identifiable {
+enum BalanceRuleKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case deepseek
     case python
 
@@ -14,7 +14,7 @@ enum BalanceRuleKind: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-struct BalanceRule: Codable, Equatable, Identifiable {
+struct BalanceRule: Codable, Equatable, Identifiable, Sendable {
     var id: String
     var name: String
     var kind: BalanceRuleKind
@@ -48,8 +48,8 @@ struct BalanceRule: Codable, Equatable, Identifiable {
     }
 }
 
-struct ModelBalance: Equatable {
-    enum State: Equatable {
+struct ModelBalance: Equatable, Sendable {
+    enum State: Equatable, Sendable {
         case idle
         case loading
         case value(Double, currency: String)
@@ -60,7 +60,7 @@ struct ModelBalance: Equatable {
     var updatedAt: Date?
 }
 
-enum BalanceExecutionError: LocalizedError, Equatable {
+enum BalanceExecutionError: LocalizedError, Equatable, Sendable {
     case missingAPIKey
     case missingScript
     case invalidAmount(String)

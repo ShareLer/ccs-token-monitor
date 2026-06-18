@@ -340,6 +340,36 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(pts.count, 3)
     }
 
+    func test_fetchTrend_fillsMissingDaysAndModelsWithZero() throws {
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = calendar.timeZone
+
+        let startDate = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_780_000_000))
+        let day1 = Int(startDate.timeIntervalSince1970)
+        let day3 = Int(calendar.date(byAdding: .day, value: 2, to: startDate)!.timeIntervalSince1970)
+        let end = Int(calendar.date(byAdding: .day, value: 3, to: startDate)!.timeIntervalSince1970)
+        let expectedDays = (0..<3).map {
+            formatter.string(from: calendar.date(byAdding: .day, value: $0, to: startDate)!)
+        }
+
+        let path = try makeTempDB(rows: [
+            ("alpha", day1, 10, 0, 0, 0),
+            ("beta", day3, 5, 0, 0, 0),
+        ])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let repo = UsageRepository(dbPath: path)
+        let pts = try repo.fetchTrend(window: DateWindow(start: day1, end: end))
+
+        XCTAssertEqual(Array(Set(pts.map(\.day))).sorted(), expectedDays)
+        XCTAssertEqual(pts.count, 6)
+        XCTAssertEqual(pts.first { $0.day == expectedDays[1] && $0.model == "alpha" }?.total, 0)
+        XCTAssertEqual(pts.first { $0.day == expectedDays[1] && $0.model == "beta" }?.total, 0)
+        XCTAssertEqual(pts.first { $0.day == expectedDays[2] && $0.model == "alpha" }?.total, 0)
+    }
+
     func test_fetchHeatmap_sumsPerDay() throws {
         let d1 = 1_780_000_000
         let path = try makeTempDB(rows: [

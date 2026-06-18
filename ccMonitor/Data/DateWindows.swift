@@ -55,6 +55,7 @@ enum DateWindows {
         case .today: return today(now: now, calendar: calendar)
         case .last7d: return lastDays(7, now: now, calendar: calendar)
         case .last30d: return lastDays(30, now: now, calendar: calendar)
+        case .thisMonth: return thisMonth(now: now, calendar: calendar)
         case .custom(let f, let t): return custom(from: f, to: t, calendar: calendar)
         }
     }
