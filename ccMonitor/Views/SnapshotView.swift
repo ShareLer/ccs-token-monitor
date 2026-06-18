@@ -38,7 +38,7 @@ struct SnapshotView: View {
         .padding(UB.Spacing.xxl)
         .frame(width: width)
         .background(UB.Canvas.canvasBackground)
-        .preferredColorScheme(appearanceMode.preferredColorScheme(systemIsDark: systemAppearanceIsDark))
+        .environment(\.colorScheme, appearanceMode.preferredColorScheme(systemIsDark: systemAppearanceIsDark))
     }
 }
 
