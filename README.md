@@ -81,15 +81,15 @@ gh auth login
 创建发布包并上传到 Releases：
 
 ```bash
-./release.sh v1.0.0 --notes "Release v1.0.0"
+./release.sh v1.0.1 --notes "Release v1.0.1"
 ```
 
-脚本会构建 Release、打包 `dist/ccMonitor-v1.0.0-macOS.zip`、生成 sha256、创建并推送 tag，然后上传到 `ShareLer/ccs-token-monitor` 的 GitHub Release。发布前工作树不能有未提交的已跟踪改动；未跟踪文件不会被发布脚本处理。
+脚本会构建 Release、打包 `dist/ccMonitor-<tag>-macOS.zip`、生成 sha256、创建并推送 tag，然后上传到 `ShareLer/ccs-token-monitor` 的 GitHub Release。发布前工作树不能有未提交的已跟踪改动；未跟踪文件不会被发布脚本处理。
 
 预检查但不推送 tag / 不创建 GitHub Release：
 
 ```bash
-./release.sh v1.0.0 --dry-run
+./release.sh v1.0.1 --dry-run
 ```
 
 当前脚本不做 Developer ID 签名或 Apple notarization，公开分发时 macOS 可能提示用户手动允许打开。
