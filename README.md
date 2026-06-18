@@ -62,6 +62,31 @@ xcodebuild test -project ccMonitor.xcodeproj -scheme ccMonitor -destination 'pla
 
 数据层（格式化、缓存率/成本公式、时间窗计算、SQLite 封装、聚合查询）有完整单元测试覆盖；UI 层用 SwiftUI Preview 目视验证。
 
+## 发布
+
+发布到 GitHub Releases 需要先安装并登录 GitHub CLI：
+
+```bash
+brew install gh
+gh auth login
+```
+
+创建发布包并上传到 Releases：
+
+```bash
+./release.sh v1.0.0 --notes "Release v1.0.0"
+```
+
+脚本会构建 Release、打包 `dist/ccMonitor-v1.0.0-macOS.zip`、生成 sha256、创建并推送 tag，然后上传到 `ShareLer/ccs-token-monitor` 的 GitHub Release。发布前工作树不能有未提交的已跟踪改动；未跟踪文件不会被发布脚本处理。
+
+预检查但不推送 tag / 不创建 GitHub Release：
+
+```bash
+./release.sh v1.0.0 --dry-run
+```
+
+当前脚本不做 Developer ID 签名或 Apple notarization，公开分发时 macOS 可能提示用户手动允许打开。
+
 ## 项目结构
 
 ```
@@ -75,4 +100,5 @@ ccMonitor/
 ccMonitorTests/                 # 单元测试
 project.yml                     # XcodeGen 工程声明
 build.sh                        # 构建脚本
+release.sh                      # GitHub Releases 发布脚本
 ```
