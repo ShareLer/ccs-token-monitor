@@ -9,9 +9,14 @@ extension Notification.Name {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private static let popoverWidth: CGFloat = 420
+    private static let minPopoverHeight: CGFloat = 320
+    private static let maxPopoverHeight: CGFloat = 840
+
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var store: DataStore!
+    private let dashboardSizing = DashboardSizing()
     private var settingsWindow: NSWindow?
     private var cancellables = Set<AnyCancellable>()
 
@@ -67,9 +72,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         popover = NSPopover()
         popover.behavior = .transient
-        // 固定尺寸：高度须小于屏幕可用高，否则 .minY 放不下时系统会改从侧边弹出。
-        popover.contentSize = NSSize(width: 420, height: 840)
-        popover.contentViewController = NSHostingController(rootView: DashboardView(store: store))
+        // 最大高度须小于屏幕可用高，否则 .minY 放不下时系统会改从侧边弹出。
+        popover.contentSize = NSSize(width: Self.popoverWidth, height: Self.maxPopoverHeight)
+        popover.contentViewController = NSHostingController(rootView: DashboardView(store: store, sizing: dashboardSizing))
+        dashboardSizing.$contentHeight
+            .removeDuplicates { abs($0 - $1) < 1 }
+            .sink { [weak self] height in
+                self?.resizePopover(toContentHeight: height)
+            }
+            .store(in: &cancellables)
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(openSettings),
@@ -85,6 +96,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover?.contentViewController?.view.window?.appearance = appearance
         settingsWindow?.appearance = appearance
         settingsWindow?.contentViewController?.view.appearance = appearance
+    }
+
+    private func resizePopover(toContentHeight height: CGFloat) {
+        guard height > 0 else { return }
+        let nextHeight = min(max(ceil(height), Self.minPopoverHeight), Self.maxPopoverHeight)
+        let nextSize = NSSize(width: Self.popoverWidth, height: nextHeight)
+        guard abs(popover.contentSize.height - nextSize.height) >= 1 else { return }
+        popover.contentSize = nextSize
     }
 
     @objc private func systemAppearanceDidChange() {

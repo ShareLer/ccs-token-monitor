@@ -1,13 +1,36 @@
 import SwiftUI
 
+final class DashboardSizing: ObservableObject {
+    @Published var contentHeight: CGFloat = 840
+}
+
+private struct DashboardContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct DashboardHeaderHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct DashboardView: View {
     @ObservedObject var store: DataStore
     @ObservedObject var settings: SettingsStore
+    @ObservedObject var sizing: DashboardSizing
     @State private var showDatePicker = false
     @State private var customStart = Date()
     @State private var customEnd = Date()
     @State private var screenshotAlert: ScreenshotAlert?
     @State private var expandedModelIDs: Set<String> = []
+    @State private var headerHeight: CGFloat = 0
+    @State private var contentHeight: CGFloat = 0
 
     /// 截图结果提示。
     private enum ScreenshotAlert: Identifiable {
@@ -23,15 +46,22 @@ struct DashboardView: View {
         }
     }
 
-    init(store: DataStore) {
+    init(store: DataStore, sizing: DashboardSizing = DashboardSizing()) {
         self.store = store
         self.settings = store.settings
+        self.sizing = sizing
     }
 
     var body: some View {
         VStack(spacing: 0) {
             header
                 .background(UB.Canvas.barBackground)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: DashboardHeaderHeightKey.self,
+                                               value: proxy.size.height)
+                    }
+                )
             UBDivider()
             // 内容整体可滚：总Token + 模型用量 + 趋势图 + 热力图。
             ScrollView {
@@ -53,9 +83,23 @@ struct DashboardView: View {
                     HeatmapView(days: store.heatmap, fitMode: settings.heatmapFitMode)
                 }
                 .padding(UB.Spacing.xxl)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: DashboardContentHeightKey.self,
+                                               value: proxy.size.height)
+                    }
+                )
             }
         }
-        .frame(width: 420, height: 840)
+        .frame(width: 420)
+        .onPreferenceChange(DashboardHeaderHeightKey.self) { height in
+            headerHeight = height
+            updateContentHeight()
+        }
+        .onPreferenceChange(DashboardContentHeightKey.self) { height in
+            contentHeight = height
+            updateContentHeight()
+        }
         .background(UB.Canvas.canvasBackground)
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme(systemIsDark: settings.systemAppearanceIsDark))
         .sheet(isPresented: $showDatePicker) {
@@ -114,6 +158,11 @@ struct DashboardView: View {
 
     private func countdownText(_ seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private func updateContentHeight() {
+        let dividerHeight: CGFloat = 1
+        sizing.contentHeight = headerHeight + dividerHeight + contentHeight
     }
 
     /// 截图：渲染完整内容长图保存到设置目录。未设目录则提醒。
