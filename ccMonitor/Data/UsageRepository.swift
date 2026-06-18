@@ -3,25 +3,18 @@ import Foundation
 /// 所有聚合查询。每次开只读连接，查完关闭。失败抛错，不崩溃。
 struct UsageRepository {
     let dbPath: String
-    /// Codex 来源的 input_tokens 含 cache_read；Claude/session 来源的 input_tokens 已是未命中输入。
-    private static var usesCodexTokenSemanticsSQL: String {
+    /// 与 cc-switch 官方保持一致：Codex/Gemini 的 input_tokens 含 cache_read；其它 app_type 已是未命中输入。
+    private static var cacheInclusiveInputSQL: String {
         """
-        data_source != 'session_log'
-        AND (
-            data_source = 'codex_session'
-            OR app_type = 'codex'
-        )
+        app_type IN ('codex', 'gemini')
         """
     }
 
     private static var normalizedInputSQL: String {
         """
         CASE
-            WHEN \(Self.usesCodexTokenSemanticsSQL) THEN
-                CASE
-                    WHEN input_tokens > cache_read_tokens THEN input_tokens - cache_read_tokens
-                    ELSE 0
-                END
+            WHEN \(Self.cacheInclusiveInputSQL) AND input_tokens >= cache_read_tokens
+                THEN input_tokens - cache_read_tokens
             ELSE input_tokens
           END
         """

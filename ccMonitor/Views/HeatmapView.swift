@@ -5,6 +5,7 @@ import SwiftUI
 struct HeatmapView: View {
     let days: [HeatmapDay]
     var fitMode: HeatmapFitMode = .fit
+    @Environment(\.colorScheme) private var colorScheme
 
     private let gap: CGFloat = 3
     private let scrollCell: CGFloat = 11   // scroll 模式固定格子边长
@@ -54,13 +55,26 @@ struct HeatmapView: View {
     }
 
     private func color(_ lvl: Int) -> Color {
-        switch lvl {
-        case 1: return Color(hex: 0xD6E685)
-        case 2: return Color(hex: 0x8CC665)
-        case 3: return Color(hex: 0x44A340)
-        case 4: return Color(hex: 0x1E6823)
-        default: return Color(hex: 0xE0E0E0)
+        heatmapPalette[min(max(lvl, 0), heatmapPalette.count - 1)]
+    }
+
+    private var heatmapPalette: [Color] {
+        if colorScheme == .dark {
+            return [
+                Color(hex: 0x202833),
+                Color(hex: 0x173B36),
+                Color(hex: 0x1E6B57),
+                Color(hex: 0x2FA36F),
+                Color(hex: 0x7DE08B),
+            ]
         }
+        return [
+            Color(hex: 0xE0E0E0),
+            Color(hex: 0xD6E685),
+            Color(hex: 0x8CC665),
+            Color(hex: 0x44A340),
+            Color(hex: 0x1E6823),
+        ]
     }
 
     var body: some View {
@@ -174,5 +188,8 @@ struct HeatmapView: View {
     return VStack {
         HeatmapView(days: days, fitMode: .fit)
         HeatmapView(days: days, fitMode: .scroll)
-    }.padding().frame(width: 420)
+    }
+    .padding()
+    .frame(width: 420)
+    .preferredColorScheme(.dark)
 }

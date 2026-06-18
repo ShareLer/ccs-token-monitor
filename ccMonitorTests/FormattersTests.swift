@@ -31,6 +31,11 @@ final class FormattersTests: XCTestCase {
     func test_formatCost_zero() {
         XCTAssertEqual(formatCost(0), "$0.00")
     }
+    func test_formatBalance() {
+        XCTAssertEqual(formatBalance(12.3, currency: "CNY"), "¥12.30")
+        XCTAssertEqual(formatBalance(4.56, currency: "USD"), "$4.56")
+        XCTAssertEqual(formatBalance(7.8, currency: "EUR"), "EUR 7.80")
+    }
     func test_formatPercent() {
         XCTAssertEqual(formatPercent(0.2345), "23%")
     }

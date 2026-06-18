@@ -15,10 +15,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     private var cancellables = Set<AnyCancellable>()
 
+    deinit {
+        DistributedNotificationCenter.default().removeObserver(self)
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settings = SettingsStore()
         let pricing = PricingStore()
-        store = DataStore(settings: settings, pricing: pricing)
+        let balance = BalanceStore()
+        store = DataStore(settings: settings, pricing: pricing, balance: balance)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
@@ -34,6 +39,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.statusItem.button?.title = text
             }
             .store(in: &cancellables)
+        settings.$appearanceMode
+            .removeDuplicates()
+            .sink { [weak self] mode in
+                self?.applyAppearance(mode, systemIsDark: settings.systemAppearanceIsDark)
+            }
+            .store(in: &cancellables)
+        settings.$systemAppearanceIsDark
+            .removeDuplicates()
+            .sink { [weak self] systemIsDark in
+                self?.applyAppearance(settings.appearanceMode, systemIsDark: systemIsDark)
+            }
+            .store(in: &cancellables)
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(systemAppearanceDidChange),
+            name: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil
+        )
 
         popover = NSPopover()
         popover.behavior = .transient
@@ -46,6 +69,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .openSettings, object: nil)
 
         store.startTimer()
+    }
+
+    private func applyAppearance(_ mode: AppAppearanceMode, systemIsDark: Bool) {
+        let appearance = mode.nsAppearance(systemIsDark: systemIsDark)
+        NSApp.appearance = appearance
+        popover?.contentViewController?.view.appearance = appearance
+        popover?.contentViewController?.view.window?.appearance = appearance
+        settingsWindow?.appearance = appearance
+        settingsWindow?.contentViewController?.view.appearance = appearance
+    }
+
+    @objc private func systemAppearanceDidChange() {
+        store.settings.refreshSystemAppearance()
     }
 
     @objc private func togglePopover(_ sender: Any?) {
@@ -69,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let root = SettingsView(settings: store.settings, pricing: store.pricing,
+        let root = SettingsView(settings: store.settings, pricing: store.pricing, balance: store.balance,
                                 onSaved: { [weak self] in
                                     self?.settingsWindow?.performClose(nil)
                                     Task { await self?.store.refreshAll() }
@@ -81,6 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         win.isReleasedWhenClosed = false
         win.delegate = self
         settingsWindow = win
+        applyAppearance(store.settings.appearanceMode, systemIsDark: store.settings.systemAppearanceIsDark)
 
         win.makeKeyAndOrderFront(nil)
         win.centerOnScreen()   // 几何正中（NSWindow.center() 是垂直偏上 1/3）

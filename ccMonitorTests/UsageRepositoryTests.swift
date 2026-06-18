@@ -170,14 +170,35 @@ final class UsageRepositoryTests: XCTestCase {
                 output: 2,
                 cacheRead: 20,
                 cacheCreate: 1,
+                appType: "codex",
                 pricingModel: "gpt-5.4",
                 dataSource: "session_log"
+            ),
+            UsageRow(
+                model: "gemini-3-pro",
+                created: 110,
+                input: 200,
+                output: 25,
+                cacheRead: 150,
+                cacheCreate: 0,
+                appType: "gemini",
+                dataSource: "proxy"
+            ),
+            UsageRow(
+                model: "codex-malformed",
+                created: 110,
+                input: 40,
+                output: 6,
+                cacheRead: 80,
+                cacheCreate: 0,
+                appType: "codex",
+                dataSource: "proxy"
             ),
         ])
         defer { try? FileManager.default.removeItem(atPath: path) }
 
         let repo = UsageRepository(dbPath: path)
-        let usages = try repo.fetchModelUsages(window: DateWindow(start: 100, end: 200))
+        let usages = try repo.fetchModelUsages(window: DateWindow(start: 100, end: 200), limit: 10)
 
         let gpt = try XCTUnwrap(usages.first { $0.model == "gpt-5.5" })
         XCTAssertEqual(gpt.input, 20)
@@ -197,8 +218,16 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(codexDeepSeek.total, 73)
 
         let sessionGPT = try XCTUnwrap(usages.first { $0.model == "session-gpt" })
-        XCTAssertEqual(sessionGPT.input, 30)
-        XCTAssertEqual(sessionGPT.total, 53)
+        XCTAssertEqual(sessionGPT.input, 10)
+        XCTAssertEqual(sessionGPT.total, 33)
+
+        let gemini = try XCTUnwrap(usages.first { $0.model == "gemini-3-pro" })
+        XCTAssertEqual(gemini.input, 50)
+        XCTAssertEqual(gemini.total, 225)
+
+        let malformed = try XCTUnwrap(usages.first { $0.model == "codex-malformed" })
+        XCTAssertEqual(malformed.input, 40)
+        XCTAssertEqual(malformed.total, 126)
     }
 
     func test_fetchSummary_forWindow() throws {
@@ -258,19 +287,40 @@ final class UsageRepositoryTests: XCTestCase {
                 output: 2,
                 cacheRead: 20,
                 cacheCreate: 1,
+                appType: "codex",
                 pricingModel: "gpt-5.4",
                 dataSource: "session_log"
+            ),
+            UsageRow(
+                model: "gemini-3-pro",
+                created: 1000,
+                input: 200,
+                output: 25,
+                cacheRead: 150,
+                cacheCreate: 0,
+                appType: "gemini",
+                dataSource: "proxy"
+            ),
+            UsageRow(
+                model: "codex-malformed",
+                created: 1000,
+                input: 40,
+                output: 6,
+                cacheRead: 80,
+                cacheCreate: 0,
+                appType: "codex",
+                dataSource: "proxy"
             ),
         ])
         defer { try? FileManager.default.removeItem(atPath: path) }
         let repo = UsageRepository(dbPath: path)
         let s = try repo.fetchSummary(window: DateWindow(start: 0, end: 2000))
-        XCTAssertEqual(s.input, 160)
-        XCTAssertEqual(s.output, 34)
-        XCTAssertEqual(s.cacheRead, 217)
+        XCTAssertEqual(s.input, 230)
+        XCTAssertEqual(s.output, 65)
+        XCTAssertEqual(s.cacheRead, 447)
         XCTAssertEqual(s.cacheCreate, 10)
-        XCTAssertEqual(s.total, 421)
-        XCTAssertEqual(s.cacheRate, 217.0 / 377.0, accuracy: 0.0001)
+        XCTAssertEqual(s.total, 752)
+        XCTAssertEqual(s.cacheRate, 447.0 / 687.0, accuracy: 0.0001)
     }
 
     func test_fetchTrend_groupsByDayAndModel() throws {

@@ -10,7 +10,7 @@ struct SummaryView: View {
         VStack(alignment: .leading, spacing: UB.Spacing.xl) {
             TimeRangeSelector(selected: $selectedRange, onCustomTap: onCustomTap)
 
-            Divider()
+            UBDivider()
 
             // input 已在仓库层归一化为未命中缓存输入；展示输入包含缓存写。
             HStack(alignment: .top) {

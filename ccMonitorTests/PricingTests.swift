@@ -9,10 +9,10 @@ final class PricingTests: XCTestCase {
     }
 
     func test_cacheRate_formula() {
-        // cache_read / (input + cache_read) = 300 / (100 + 300) = 0.75
+        // cache_read / (input + cache_create + cache_read) = 300 / (100 + 100 + 300) = 0.6
         let u = ModelUsage(model: "m", input: 100, output: 0,
-                           cacheRead: 300, cacheCreate: 0)
-        XCTAssertEqual(u.cacheRate, 0.75, accuracy: 0.0001)
+                           cacheRead: 300, cacheCreate: 100)
+        XCTAssertEqual(u.cacheRate, 0.6, accuracy: 0.0001)
     }
 
     func test_cacheRate_zeroDenominator() {
@@ -37,9 +37,9 @@ final class PricingTests: XCTestCase {
     }
 
     func test_summaryStats_cacheRate() {
-        let s = SummaryStats(input: 100, output: 50, cacheRead: 300, cacheCreate: 0)
-        XCTAssertEqual(s.total, 450)
-        XCTAssertEqual(s.cacheRate, 0.75, accuracy: 0.0001)
+        let s = SummaryStats(input: 100, output: 50, cacheRead: 300, cacheCreate: 100)
+        XCTAssertEqual(s.total, 550)
+        XCTAssertEqual(s.cacheRate, 0.6, accuracy: 0.0001)
     }
 
     func test_pricing_codable_roundtrip() throws {

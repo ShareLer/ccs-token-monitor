@@ -18,6 +18,16 @@ func formatCost(_ usd: Double) -> String {
     return String(format: "$%.2f", usd)
 }
 
+func formatBalance(_ amount: Double, currency: String) -> String {
+    let symbol: String
+    switch currency.uppercased() {
+    case "USD": symbol = "$"
+    case "CNY", "RMB": symbol = "¥"
+    default: symbol = "\(currency.uppercased()) "
+    }
+    return "\(symbol)\(String(format: "%.2f", amount))"
+}
+
 func formatPercent(_ ratio: Double) -> String {
     return "\(Int((ratio * 100).rounded()))%"
 }

@@ -62,6 +62,7 @@ private struct StackedBarPlot: View {
     let days: [String]
     let segments: [(name: String, color: Color, values: [Int])]
     @State private var hoverIdx: Int?
+    @Environment(\.colorScheme) private var colorScheme
 
     private let leading: CGFloat = 36
     private let trailing: CGFloat = 12
@@ -127,7 +128,10 @@ private struct StackedBarPlot: View {
         ForEach(0...yTicks, id: \.self) { i in
             let y = plot.minY + plot.height * CGFloat(i) / CGFloat(yTicks)
             Path { p in p.move(to: CGPoint(x: plot.minX, y: y)); p.addLine(to: CGPoint(x: plot.maxX, y: y)) }
-                .stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.6)
+                .stroke(
+                    UB.Canvas.lineColor(.grid, for: colorScheme),
+                    lineWidth: UB.Canvas.lineWidth(.grid, for: colorScheme)
+                )
         }
     }
 

@@ -19,11 +19,13 @@ final class DataStore: ObservableObject {
 
     let settings: SettingsStore
     let pricing: PricingStore
+    let balance: BalanceStore
     private var timer: Timer?
 
-    init(settings: SettingsStore, pricing: PricingStore) {
+    init(settings: SettingsStore, pricing: PricingStore, balance: BalanceStore) {
         self.settings = settings
         self.pricing = pricing
+        self.balance = balance
     }
 
     private var repo: UsageRepository { UsageRepository(dbPath: settings.dbPath) }
@@ -56,6 +58,7 @@ final class DataStore: ObservableObject {
             self.todaySummary = todaySummary
             self.trend = trend
             self.heatmap = heat
+            await balance.refresh(models: usages.map(\.model), dbPath: settings.dbPath)
             self.loadError = nil
         } catch {
             self.loadError = describe(error)
@@ -83,6 +86,7 @@ final class DataStore: ObservableObject {
             }.value
             self.modelUsages = usages
             self.summary = summary
+            await balance.refresh(models: usages.map(\.model), dbPath: settings.dbPath)
             if range == .today {
                 self.todaySummary = summary
             }

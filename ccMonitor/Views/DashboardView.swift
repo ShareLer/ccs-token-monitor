@@ -7,6 +7,7 @@ struct DashboardView: View {
     @State private var customStart = Date()
     @State private var customEnd = Date()
     @State private var screenshotAlert: ScreenshotAlert?
+    @State private var expandedModelIDs: Set<String> = []
 
     /// 截图结果提示。
     private enum ScreenshotAlert: Identifiable {
@@ -31,7 +32,7 @@ struct DashboardView: View {
         VStack(spacing: 0) {
             header
                 .background(UB.Canvas.barBackground)
-            Divider()
+            UBDivider()
             // 内容整体可滚：总Token + 模型用量 + 趋势图 + 热力图。
             ScrollView {
                 VStack(spacing: UB.Spacing.xl) {
@@ -44,7 +45,10 @@ struct DashboardView: View {
                                 onCustomTap: { showDatePicker = true })
                     ModelListView(usages: store.modelUsages,
                                   total: store.summary.total,
-                                  pricing: store.pricing)
+                                  expandedModelIDs: $expandedModelIDs,
+                                  pricing: store.pricing,
+                                  balance: store.balance,
+                                  dbPath: settings.dbPath)
                     TrendChartView(points: store.trend)
                     HeatmapView(days: store.heatmap, fitMode: settings.heatmapFitMode)
                 }
@@ -53,6 +57,7 @@ struct DashboardView: View {
         }
         .frame(width: 420, height: 840)
         .background(UB.Canvas.canvasBackground)
+        .preferredColorScheme(settings.appearanceMode.preferredColorScheme(systemIsDark: settings.systemAppearanceIsDark))
         .sheet(isPresented: $showDatePicker) {
             datePickerSheet
         }
@@ -94,6 +99,10 @@ struct DashboardView: View {
             RefreshButton(isLoading: store.isLoading) {
                 Task { await store.refreshAll() }
             }
+            IconButton(systemName: settings.appearanceMode.icon,
+                       help: "外观：\(settings.appearanceMode.displayName)") {
+                settings.cycleAppearanceMode()
+            }
             IconButton(systemName: "camera", help: "截图") { takeScreenshot() }
             IconButton(systemName: "gearshape", help: "设置") {
                 NotificationCenter.default.post(name: .openSettings, object: nil)
@@ -115,11 +124,16 @@ struct DashboardView: View {
         let snapshot = SnapshotView(
             modelUsages: store.modelUsages,
             pricing: store.pricing,
+            balance: store.balance,
+            dbPath: settings.dbPath,
             summary: store.summary,
             selectedRange: store.selectedRange,
+            expandedModelIDs: expandedModelIDs,
             trend: store.trend,
             heatmap: store.heatmap,
-            heatmapFitMode: settings.heatmapFitMode
+            heatmapFitMode: settings.heatmapFitMode,
+            appearanceMode: settings.appearanceMode,
+            systemAppearanceIsDark: settings.systemAppearanceIsDark
         )
         do {
             let url = try Screenshotter.save(snapshot, toDirectory: dir)
@@ -189,6 +203,6 @@ private struct IconButton: View {
 }
 
 #Preview {
-    let store = DataStore(settings: SettingsStore(), pricing: PricingStore())
+    let store = DataStore(settings: SettingsStore(), pricing: PricingStore(), balance: BalanceStore())
     return DashboardView(store: store)
 }

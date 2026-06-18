@@ -4,16 +4,19 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var pricing: PricingStore
+    @ObservedObject var balance: BalanceStore
     let onSaved: () -> Void
 
     enum Section: String, CaseIterable, Identifiable {
         case basic = "基础设置"
         case pricing = "模型价格"
+        case balance = "余额逻辑"
         var id: String { rawValue }
         var icon: String {
             switch self {
             case .basic: return "slider.horizontal.3"
             case .pricing: return "dollarsign.circle"
+            case .balance: return "creditcard"
             }
         }
     }
@@ -21,6 +24,8 @@ struct SettingsView: View {
     @State private var section: Section = .basic
     @State private var models: [String] = []
     @State private var loadError: String?
+    @State private var editingRule: BalanceRule?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HSplitView {
@@ -28,6 +33,7 @@ struct SettingsView: View {
             detail
         }
         .frame(width: 660, height: 460)
+        .preferredColorScheme(settings.appearanceMode.preferredColorScheme(systemIsDark: settings.systemAppearanceIsDark))
         .onAppear(perform: loadModels)
     }
 
@@ -77,11 +83,13 @@ struct SettingsView: View {
                         generalSection
                     case .pricing:
                         pricingSection
+                    case .balance:
+                        balanceSection
                     }
                 }
                 .padding(UB.Spacing.xxl)
             }
-            Divider()
+            UBDivider()
             HStack {
                 Spacer()
                 Button("完成") { onSaved() }.keyboardShortcut(.defaultAction)
@@ -101,6 +109,14 @@ struct SettingsView: View {
         }
     }
 
+    private var rowOutline: some View {
+        RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous)
+            .stroke(
+                UB.Canvas.lineColor(.outline, for: colorScheme),
+                lineWidth: UB.Canvas.lineWidth(.hairline, for: colorScheme)
+            )
+    }
+
     private var dataSourceSection: some View {
         VStack(alignment: .leading, spacing: UB.Spacing.xl) {
             VStack(alignment: .leading, spacing: UB.Spacing.l) {
@@ -118,7 +134,7 @@ struct SettingsView: View {
                         .font(UB.Font.caption).foregroundColor(.secondary)
                 }
             }
-            Divider()
+            UBDivider(style: .hairline)
             VStack(alignment: .leading, spacing: UB.Spacing.l) {
                 sectionHeader("截图保存目录", "标题栏截图按钮保存的位置")
                 HStack {
@@ -141,6 +157,15 @@ struct SettingsView: View {
                     Text("每10分钟").tag(10)
                     Text("每15分钟").tag(15)
                     Text("每30分钟").tag(30)
+                }
+                .pickerStyle(.segmented).labelsHidden()
+            }
+            VStack(alignment: .leading, spacing: UB.Spacing.m) {
+                sectionHeader("外观")
+                Picker("", selection: $settings.appearanceMode) {
+                    ForEach(AppAppearanceMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
                 }
                 .pickerStyle(.segmented).labelsHidden()
             }
@@ -179,6 +204,124 @@ struct SettingsView: View {
         .ubCard()
     }
 
+    private var balanceSection: some View {
+        VStack(alignment: .leading, spacing: UB.Spacing.xl) {
+            balanceRulesSection
+            balanceModelMappingSection
+        }
+    }
+
+    private var balanceRulesSection: some View {
+        VStack(alignment: .leading, spacing: UB.Spacing.l) {
+            HStack {
+                sectionHeader("余额获取逻辑", "DeepSeek 内置；自定义 Python 脚本需从 stdout 返回金额或 JSON")
+                Spacer()
+                Button {
+                    editingRule = BalanceRule(name: "自定义余额", kind: .python, currency: "USD", script: "print(0)")
+                } label: {
+                    Label("添加", systemImage: "plus")
+                }
+            }
+
+            ForEach(balance.rules) { rule in
+                balanceRuleRow(rule)
+            }
+        }
+        .ubCard()
+        .sheet(item: $editingRule) { rule in
+            BalanceRuleEditor(rule: rule, onCancel: {
+                editingRule = nil
+            }, onSave: { updated in
+                balance.setRule(updated)
+                editingRule = nil
+            })
+        }
+    }
+
+    private func balanceRuleRow(_ rule: BalanceRule) -> some View {
+        HStack(spacing: UB.Spacing.m) {
+            Image(systemName: rule.kind == .deepseek ? "bolt.horizontal.circle" : "terminal")
+                .foregroundColor(UB.Palette.balance)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(rule.name).font(UB.Font.body).lineLimit(1)
+                Text("\(rule.kind.displayName) · \(rule.currency.isEmpty ? "USD" : rule.currency)")
+                    .font(UB.Font.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("编辑") { editingRule = rule }
+            if rule.id != BalanceRule.deepseekBuiltinID {
+                Button(role: .destructive) {
+                    balance.deleteRule(id: rule.id)
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .help("删除")
+            }
+        }
+        .padding(.horizontal, UB.Spacing.l)
+        .padding(.vertical, UB.Spacing.s)
+        .background(UB.Canvas.canvasBackground)
+        .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
+        .overlay(rowOutline)
+    }
+
+    private var balanceModelMappingSection: some View {
+        VStack(alignment: .leading, spacing: UB.Spacing.l) {
+            sectionHeader("模型绑定", "未手动绑定时，模型名包含 deepseek 的条目自动使用 DeepSeek 内置逻辑")
+            if models.isEmpty {
+                Text(loadError ?? "无模型数据")
+                    .font(UB.Font.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                ForEach(models, id: \.self) { model in
+                    balanceMappingRow(model)
+                }
+            }
+        }
+        .ubCard()
+    }
+
+    private func balanceMappingRow(_ model: String) -> some View {
+        HStack(spacing: UB.Spacing.m) {
+            Text(model)
+                .font(UB.Font.body)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Picker("", selection: balanceRuleSelectionBinding(model)) {
+                Text("自动/默认").tag("")
+                Text("不显示").tag(BalanceStore.disabledRuleID)
+                ForEach(balance.rules) { rule in
+                    Text(rule.name).tag(rule.id)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 180)
+            Button {
+                Task { await balance.refresh(model: model, dbPath: settings.dbPath) }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.borderless)
+            .help("测试/刷新余额")
+        }
+        .padding(.horizontal, UB.Spacing.l)
+        .padding(.vertical, UB.Spacing.s)
+        .background(UB.Canvas.canvasBackground)
+        .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
+        .overlay(rowOutline)
+    }
+
+    private func balanceRuleSelectionBinding(_ model: String) -> Binding<String> {
+        Binding<String>(
+            get: { balance.modelRuleIDs[model] ?? "" },
+            set: { balance.assign(ruleID: $0.isEmpty ? nil : $0, to: model) }
+        )
+    }
+
     private func forEachPriceLabel() -> some View {
         HStack(spacing: UB.Spacing.s) {
             ForEach(["输入", "输出", "缓存读", "缓存写"], id: \.self) { t in
@@ -208,6 +351,7 @@ struct SettingsView: View {
         .padding(.horizontal, UB.Spacing.l).padding(.vertical, UB.Spacing.s)
         .background(UB.Canvas.canvasBackground)
         .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
+        .overlay(rowOutline)
     }
 
     /// 生成某模型某价格字段的双向绑定。
@@ -278,6 +422,111 @@ struct SettingsView: View {
     }
 }
 
+private struct BalanceRuleEditor: View {
+    @State private var draft: BalanceRule
+    let onCancel: () -> Void
+    let onSave: (BalanceRule) -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    init(rule: BalanceRule, onCancel: @escaping () -> Void, onSave: @escaping (BalanceRule) -> Void) {
+        self._draft = State(initialValue: rule)
+        self.onCancel = onCancel
+        self.onSave = onSave
+    }
+
+    private var isBuiltinDeepSeek: Bool {
+        draft.id == BalanceRule.deepseekBuiltinID
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: UB.Spacing.xl) {
+            Text("余额逻辑")
+                .font(.system(size: 16, weight: .semibold))
+
+            VStack(alignment: .leading, spacing: UB.Spacing.l) {
+                labeledField("名称") {
+                    TextField("名称", text: $draft.name)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                labeledField("类型") {
+                    Picker("", selection: $draft.kind) {
+                        ForEach(BalanceRuleKind.allCases) { kind in
+                            Text(kind.displayName).tag(kind)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .disabled(isBuiltinDeepSeek)
+                }
+
+                labeledField("币种") {
+                    TextField("USD / CNY", text: $draft.currency)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                labeledField(draft.kind == .deepseek ? "DeepSeek API Key" : "API Key 环境变量") {
+                    SecureField("sk-...", text: $draft.apiKey)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                if draft.kind == .python {
+                    VStack(alignment: .leading, spacing: UB.Spacing.s) {
+                        Text("Python 脚本")
+                            .font(UB.Font.caption)
+                            .foregroundStyle(.secondary)
+                        TextEditor(text: $draft.script)
+                            .font(.system(size: 12, design: .monospaced))
+                            .frame(minHeight: 150)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: UB.Radius.control)
+                                    .stroke(
+                                        UB.Canvas.lineColor(.outline, for: colorScheme),
+                                        lineWidth: UB.Canvas.lineWidth(.outline, for: colorScheme)
+                                    )
+                            )
+                        Text("可读取环境变量 CCS_MODEL / CCS_BALANCE_API_KEY / CCS_BALANCE_CURRENCY；stdout 返回数字或 {\"amount\": 12.3}。")
+                            .font(UB.Font.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            HStack {
+                Spacer()
+                Button("取消") { onCancel() }
+                Button("保存") { onSave(normalized(draft)) }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
+    }
+
+    private func labeledField<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: UB.Spacing.s) {
+            Text(label)
+                .font(UB.Font.caption)
+                .foregroundStyle(.secondary)
+            content()
+        }
+    }
+
+    private func normalized(_ rule: BalanceRule) -> BalanceRule {
+        var rule = rule
+        rule.name = rule.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        rule.currency = rule.currency.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if rule.currency.isEmpty {
+            rule.currency = rule.kind == .deepseek ? "CNY" : "USD"
+        }
+        if rule.kind == .deepseek {
+            rule.script = ""
+        }
+        return rule
+    }
+}
+
 #Preview {
-    SettingsView(settings: SettingsStore(), pricing: PricingStore(), onSaved: {})
+    SettingsView(settings: SettingsStore(), pricing: PricingStore(), balance: BalanceStore(), onSaved: {})
 }

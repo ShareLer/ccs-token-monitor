@@ -6,11 +6,16 @@ import SwiftUI
 struct SnapshotView: View {
     let modelUsages: [ModelUsage]
     let pricing: PricingStore
+    let balance: BalanceStore
+    let dbPath: String
     let summary: SummaryStats
     let selectedRange: TimeRange
+    let expandedModelIDs: Set<String>
     let trend: [TrendPoint]
     let heatmap: [HeatmapDay]
     let heatmapFitMode: HeatmapFitMode
+    let appearanceMode: AppAppearanceMode
+    let systemAppearanceIsDark: Bool
 
     var width: CGFloat = 420
 
@@ -21,18 +26,25 @@ struct SnapshotView: View {
                 Spacer()
             }
             SummaryView(selectedRange: .constant(selectedRange), summary: summary, onCustomTap: {})
-            ModelListView(usages: modelUsages, total: summary.total, pricing: pricing)
+            ModelListView(usages: modelUsages,
+                          total: summary.total,
+                          expandedModelIDs: .constant(expandedModelIDs),
+                          pricing: pricing,
+                          balance: balance,
+                          dbPath: dbPath)
             TrendChartView(points: trend)
             HeatmapView(days: heatmap, fitMode: heatmapFitMode)
         }
         .padding(UB.Spacing.xxl)
         .frame(width: width)
         .background(UB.Canvas.canvasBackground)
+        .preferredColorScheme(appearanceMode.preferredColorScheme(systemIsDark: systemAppearanceIsDark))
     }
 }
 
 #Preview {
     let pricing = PricingStore()
+    let balance = BalanceStore()
     return SnapshotView(
         modelUsages: [
             ModelUsage(model: "claude-sonnet-4-6", input: 334848, output: 4195578,
@@ -41,13 +53,18 @@ struct SnapshotView: View {
                        cacheRead: 270605312, cacheCreate: 0),
         ],
         pricing: pricing,
+        balance: balance,
+        dbPath: SettingsStore.defaultDBPath,
         summary: SummaryStats(input: 1224276, output: 987654, cacheRead: 200000, cacheCreate: 36622),
         selectedRange: .today,
+        expandedModelIDs: ["claude-sonnet-4-6"],
         trend: (1...20).flatMap { i -> [TrendPoint] in
             let d = String(format: "2026-06-%02d", i)
             return [TrendPoint(day: d, model: "claude-sonnet-4-6", total: 800_000 + i * 120_000)]
         },
         heatmap: [],
-        heatmapFitMode: .fit
+        heatmapFitMode: .fit,
+        appearanceMode: .system,
+        systemAppearanceIsDark: false
     )
 }
