@@ -5,7 +5,8 @@ macOS 菜单栏应用，从 `~/.cc-switch/cc-switch.db` 只读读取 token 用�
 ## 界面预览
 
 <p align="center">
-  <img src="docs/images/ccmonitor-ui.png" alt="ccMonitor UI 展示" width="420">
+  <img src="docs/images/ccmonitor-ui-usage.png" alt="ccMonitor 用量总览" width="360">
+  <img src="docs/images/ccmonitor-ui-expanded.png" alt="ccMonitor 模型明细展开" width="360">
 </p>
 
 ## 功能
