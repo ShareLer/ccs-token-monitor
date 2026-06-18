@@ -1,8 +1,10 @@
 import Foundation
+import JavaScriptCore
 
 enum BalanceService {
     private static let pythonTimeoutSeconds: TimeInterval = 15
     private static let pythonValidationTimeoutSeconds: TimeInterval = 5
+    private static let javascriptTimeoutSeconds: TimeInterval = 15
 
     static func fetch(rule: BalanceRule, model: String, dbPath: String) async -> ModelBalance {
         do {
@@ -12,6 +14,8 @@ enum BalanceService {
                 value = try await fetchDeepSeek(rule: rule, dbPath: dbPath)
             case .python:
                 value = try await runPython(rule: rule)
+            case .javascript:
+                value = try await runJavaScript(rule: rule)
             }
             return ModelBalance(state: .value(value.amount, currency: value.currency),
                                 updatedAt: Date())
@@ -22,6 +26,16 @@ enum BalanceService {
             return ModelBalance(state: .failed(error.localizedDescription),
                                 updatedAt: Date())
         }
+    }
+
+    static func parseBalanceValue(_ output: [String: Any]) throws -> (Double, String) {
+        let amountValue = output["remaining"] ?? output["amount"] ?? output["balance"]
+        guard let amount = try optionalNumericField(amountValue) else {
+            throw BalanceExecutionError.invalidAmount(String(describing: output))
+        }
+
+        let currency = (output["unit"] as? String) ?? (output["currency"] as? String) ?? "CNY"
+        return (amount, currency)
     }
 
     static func parseAmount(_ output: String) throws -> Double {
@@ -70,6 +84,12 @@ enum BalanceService {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             throw BalanceExecutionError.script(message)
         }
+    }
+
+    static func validateJavaScriptTemplate(_ script: String, baseUrl: String = "https://example.com", apiKey: String = "test") throws {
+        let compiled = try JavaScriptBalanceTemplate.compile(script: script, baseUrl: baseUrl, apiKey: apiKey)
+        let config = try compiled.request()
+        try validateJavaScriptRequest(config, baseUrl: baseUrl)
     }
 
     private static func fetchDeepSeek(rule: BalanceRule, dbPath: String) async throws -> (Double, String) {
@@ -148,6 +168,23 @@ enum BalanceService {
         return (amount, "CNY")
     }
 
+    private static func runJavaScript(rule: BalanceRule) async throws -> (Double, String) {
+        let script = rule.script.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !script.isEmpty else { throw BalanceExecutionError.missingScript }
+
+        let apiKey = rule.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !apiKey.isEmpty else { throw BalanceExecutionError.missingAPIKey }
+
+        let baseUrl = rule.baseUrl.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !baseUrl.isEmpty else { throw BalanceExecutionError.missingBaseURL }
+
+        let template = try JavaScriptBalanceTemplate.compile(script: script, baseUrl: baseUrl, apiKey: apiKey)
+        let config = try template.request()
+        let response = try await sendJavaScriptRequest(config, baseUrl: baseUrl)
+        let extracted = try template.extract(response: response)
+        return try parseBalanceValue(extracted)
+    }
+
     private struct ProcessResult {
         let status: Int32
         let stdout: String
@@ -222,5 +259,148 @@ enum BalanceService {
         if let value = value as? Int { return Double(value) }
         if let value = value as? String, let parsed = Double(value) { return parsed }
         throw BalanceExecutionError.api("金额字段格式异常")
+    }
+
+    private static func optionalNumericField(_ value: Any?) throws -> Double? {
+        guard let value else { return nil }
+        if value is NSNull { return nil }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? String, let parsed = Double(value.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return parsed
+        }
+        return nil
+    }
+
+    private static func sendJavaScriptRequest(_ config: JavaScriptBalanceTemplate.RequestConfig, baseUrl: String) async throws -> [String: Any] {
+        try validateJavaScriptRequest(config, baseUrl: baseUrl)
+
+        var request = URLRequest(url: URL(string: config.url)!, timeoutInterval: javascriptTimeoutSeconds)
+        request.httpMethod = config.method
+        for (key, value) in config.headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        if let body = config.body {
+            request.httpBody = body.data(using: .utf8)
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw BalanceExecutionError.network(error.localizedDescription)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw BalanceExecutionError.api("响应格式异常")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw BalanceExecutionError.api("HTTP \(http.statusCode) \(body)")
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw BalanceExecutionError.api("无法解析 JS 查询响应")
+        }
+        return json
+    }
+
+    private static func validateJavaScriptRequest(_ config: JavaScriptBalanceTemplate.RequestConfig, baseUrl: String) throws {
+        guard let url = URL(string: config.url) else {
+            throw BalanceExecutionError.api("JS 请求 URL 无效")
+        }
+        guard url.scheme == "https" || url.host == "localhost" || url.host == "127.0.0.1" else {
+            throw BalanceExecutionError.api("JS 请求 URL 必须使用 HTTPS")
+        }
+        if let base = URL(string: baseUrl),
+           url.host != base.host || url.port != base.port {
+            throw BalanceExecutionError.api("JS 请求 URL 必须与 Base URL 同源")
+        }
+    }
+}
+
+private final class JavaScriptBalanceTemplate {
+    struct RequestConfig {
+        let url: String
+        let method: String
+        let headers: [String: String]
+        let body: String?
+    }
+
+    private let context: JSContext
+    private let config: JSValue
+
+    private init(context: JSContext, config: JSValue) {
+        self.context = context
+        self.config = config
+    }
+
+    static func compile(script: String, baseUrl: String, apiKey: String) throws -> JavaScriptBalanceTemplate {
+        let script = script.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !script.isEmpty else { throw BalanceExecutionError.missingScript }
+
+        let context = JSContext()!
+        var capturedException: JSValue?
+        context.exceptionHandler = { _, exception in
+            capturedException = exception
+        }
+
+        let preparedScript = script
+            .replacingOccurrences(of: "{{baseUrl}}", with: baseUrl)
+            .replacingOccurrences(of: "{{apiKey}}", with: apiKey)
+
+        guard let config = context.evaluateScript(preparedScript), capturedException == nil else {
+            throw BalanceExecutionError.script(capturedException?.toString() ?? "JS 模板解析失败")
+        }
+        guard config.hasProperty("request"), config.hasProperty("extractor") else {
+            throw BalanceExecutionError.script("JS 模板必须包含 request 和 extractor")
+        }
+        guard !config.forProperty("extractor").isUndefined else {
+            throw BalanceExecutionError.script("JS 模板缺少 extractor")
+        }
+
+        return JavaScriptBalanceTemplate(context: context, config: config)
+    }
+
+    func request() throws -> RequestConfig {
+        guard let request = config.forProperty("request"), !request.isUndefined else {
+            throw BalanceExecutionError.script("JS 模板缺少 request")
+        }
+        guard let url = request.forProperty("url")?.toString(), !url.isEmpty else {
+            throw BalanceExecutionError.script("request.url 不能为空")
+        }
+        let method = request.forProperty("method")?.toString()?.uppercased() ?? "GET"
+        guard ["GET", "POST", "PUT", "PATCH", "DELETE"].contains(method) else {
+            throw BalanceExecutionError.script("不支持的请求方法：\(method)")
+        }
+
+        var headers: [String: String] = [:]
+        if let headerObject = request.forProperty("headers"), !headerObject.isUndefined, !headerObject.isNull {
+            guard let headerDict = headerObject.toDictionary() as? [String: Any] else {
+                throw BalanceExecutionError.script("request.headers 必须是对象")
+            }
+            headers = headerDict.reduce(into: [String: String]()) { result, item in
+                result[item.key] = String(describing: item.value)
+            }
+        }
+
+        let bodyValue = request.forProperty("body")
+        let body = bodyValue?.isUndefined == false && bodyValue?.isNull == false ? bodyValue?.toString() : nil
+        return RequestConfig(url: url, method: method, headers: headers, body: body)
+    }
+
+    func extract(response: [String: Any]) throws -> [String: Any] {
+        guard let extractor = config.forProperty("extractor"), !extractor.isUndefined else {
+            throw BalanceExecutionError.script("JS 模板缺少 extractor")
+        }
+        let responseValue = JSValue(object: response, in: context)
+        guard let result = extractor.call(withArguments: [responseValue as Any]), context.exception == nil else {
+            throw BalanceExecutionError.script(context.exception?.toString() ?? "extractor 执行失败")
+        }
+        guard let dict = result.toDictionary() as? [String: Any] else {
+            throw BalanceExecutionError.script("extractor 必须返回对象")
+        }
+        return dict
     }
 }

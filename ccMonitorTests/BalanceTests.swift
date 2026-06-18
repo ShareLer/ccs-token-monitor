@@ -33,6 +33,30 @@ final class BalanceTests: XCTestCase {
         }
     }
 
+    func test_validateJavaScriptTemplate_acceptsRequestExtractorTemplate() throws {
+        try BalanceService.validateJavaScriptTemplate(BalanceRule.javascriptDefaultScript,
+                                                      baseUrl: "https://api.example.com",
+                                                      apiKey: "sk-test")
+    }
+
+    func test_validateJavaScriptTemplate_rejectsMissingExtractor() {
+        XCTAssertThrowsError(try BalanceService.validateJavaScriptTemplate("""
+        ({
+          request: { url: "{{baseUrl}}/v1/usage", method: "GET" }
+        })
+        """))
+    }
+
+    func test_parseBalanceValue_acceptsRemainingAndUnit() throws {
+        let parsed = try BalanceService.parseBalanceValue([
+            "remaining": 12.3,
+            "unit": "USD"
+        ])
+
+        XCTAssertEqual(parsed.0, 12.3, accuracy: 0.0001)
+        XCTAssertEqual(parsed.1, "USD")
+    }
+
     func test_deepSeekCredentialResolver_parsesClaudeProviderConfig() {
         let config = """
         {
@@ -139,6 +163,21 @@ final class BalanceTests: XCTestCase {
         XCTAssertEqual(recorded.first?.ruleID, rule.id)
         XCTAssertEqual(store.balance(for: "model-a")?.state, .value(9, currency: "CNY"))
         XCTAssertEqual(store.balance(for: "model-b")?.state, .value(9, currency: "CNY"))
+    }
+
+    @MainActor
+    func test_refreshRule_storesBalanceByRule() async {
+        let (suiteName, defaults) = makeDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let rule = BalanceRule(id: "python.direct", name: "Python", kind: .python, currency: "CNY", script: "print(1)")
+        defaults.set(try! JSONEncoder().encode([rule]), forKey: "balanceRules")
+        let store = BalanceStore(defaults: defaults) { rule, _, _ in
+            ModelBalance(state: .value(18, currency: rule.currency), updatedAt: Date())
+        }
+
+        await store.refresh(ruleID: rule.id, dbPath: "/tmp/test.db")
+
+        XCTAssertEqual(store.balance(forRuleID: rule.id)?.state, .value(18, currency: "CNY"))
     }
 
     private func makeDefaults() -> (String, UserDefaults) {

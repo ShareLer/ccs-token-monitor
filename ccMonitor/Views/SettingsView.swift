@@ -223,10 +223,13 @@ struct SettingsView: View {
     private var balanceRulesSection: some View {
         VStack(alignment: .leading, spacing: UB.Spacing.l) {
             HStack {
-                sectionHeader("余额获取逻辑", "DeepSeek 内置；自定义 Python 脚本需从 stdout 返回金额或 JSON")
+                sectionHeader("余额获取逻辑", "支持 DeepSeek 内置、JS 查询模板、自定义 Python 脚本")
                 Spacer()
                 Button {
-                    editingRule = BalanceRule(name: "自定义余额", kind: .python, currency: "CNY", script: "print(0)")
+                    editingRule = BalanceRule(name: "自定义余额",
+                                              kind: .javascript,
+                                              currency: "CNY",
+                                              script: BalanceRule.javascriptDefaultScript)
                 } label: {
                     Label("添加", systemImage: "plus")
                 }
@@ -243,13 +246,14 @@ struct SettingsView: View {
             }, onSave: { updated in
                 balance.setRule(updated)
                 editingRule = nil
+                Task { await balance.refresh(ruleID: updated.id, dbPath: settings.dbPath) }
             })
         }
     }
 
     private func balanceRuleRow(_ rule: BalanceRule) -> some View {
         HStack(spacing: UB.Spacing.m) {
-            Image(systemName: rule.kind == .deepseek ? "bolt.horizontal.circle" : "terminal")
+            Image(systemName: ruleIcon(rule.kind))
                 .foregroundColor(UB.Palette.balance)
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 2) {
@@ -259,6 +263,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            balanceRuleStatus(rule)
             Button("编辑") { editingRule = rule }
             if rule.id != BalanceRule.deepseekBuiltinID {
                 Button(role: .destructive) {
@@ -275,6 +280,52 @@ struct SettingsView: View {
         .background(UB.Canvas.canvasBackground)
         .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
         .overlay(rowOutline)
+    }
+
+    private func balanceRuleStatus(_ rule: BalanceRule) -> some View {
+        let modelBalance = balance.balance(forRuleID: rule.id)
+        let text: String
+        let color: Color
+        let help: String
+
+        switch modelBalance?.state {
+        case .value(let value, let currency):
+            text = formatBalance(value, currency: currency)
+            color = UB.Palette.balance
+            help = "余额 \(text)"
+        case .failed(let message):
+            text = "失败"
+            color = .red
+            help = message
+        case .loading:
+            text = "查询中"
+            color = .secondary
+            help = "正在查询余额"
+        case .idle:
+            text = "未查询"
+            color = .secondary
+            help = "尚未查询余额"
+        case .none:
+            text = "未查询"
+            color = .secondary
+            help = "尚未查询余额"
+        }
+
+        return Label(text, systemImage: "creditcard")
+            .font(UB.Font.caption)
+            .foregroundColor(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+            .frame(width: 86, alignment: .trailing)
+            .help(help)
+    }
+
+    private func ruleIcon(_ kind: BalanceRuleKind) -> String {
+        switch kind {
+        case .deepseek: return "bolt.horizontal.circle"
+        case .python: return "terminal"
+        case .javascript: return "curlybraces"
+        }
     }
 
     private var balanceModelMappingSection: some View {
@@ -471,21 +522,32 @@ private struct BalanceRuleEditor: View {
                     .disabled(isBuiltinDeepSeek)
                 }
 
-                if draft.kind == .deepseek {
-                    labeledField("DeepSeek API Key") {
+                if draft.kind == .deepseek || draft.kind == .javascript {
+                    if draft.kind == .javascript {
+                        labeledField("Base URL") {
+                            TextField("https://api.example.com", text: $draft.baseUrl)
+                                .textFieldStyle(.roundedBorder)
+                                .disabled(isValidating)
+                                .onChange(of: draft.baseUrl) { _ in validationError = nil }
+                        }
+                    }
+
+                    labeledField(draft.kind == .deepseek ? "DeepSeek API Key" : "API Key") {
                         SecureField("sk-...", text: $draft.apiKey)
                             .textFieldStyle(.roundedBorder)
+                            .disabled(isValidating)
+                            .onChange(of: draft.apiKey) { _ in validationError = nil }
                     }
                 }
 
-                if draft.kind == .python {
+                if draft.kind == .python || draft.kind == .javascript {
                     VStack(alignment: .leading, spacing: UB.Spacing.s) {
-                        Text("Python 脚本")
+                        Text(draft.kind == .python ? "Python 脚本" : "JS 查询模板")
                             .font(UB.Font.caption)
                             .foregroundStyle(.secondary)
                         TextEditor(text: $draft.script)
                             .font(.system(size: 12, design: .monospaced))
-                            .frame(minHeight: 150)
+                            .frame(minHeight: draft.kind == .python ? 150 : 220)
                             .disabled(isValidating)
                             .onChange(of: draft.script) { _ in validationError = nil }
                             .overlay(
@@ -495,7 +557,9 @@ private struct BalanceRuleEditor: View {
                                         lineWidth: UB.Canvas.lineWidth(.outline, for: colorScheme)
                                     )
                             )
-                        Text("脚本按余额逻辑执行一次并分发给绑定模型；stdout 返回数字或 {\"amount\": 12.3}。")
+                        Text(draft.kind == .python
+                             ? "脚本按余额逻辑执行一次并分发给绑定模型；stdout 返回数字或 {\"amount\": 12.3}。"
+                             : "模板返回 request 和 extractor；支持 {{baseUrl}} 与 {{apiKey}}，由应用发起请求。")
                             .font(UB.Font.caption)
                             .foregroundStyle(.secondary)
                         if let validationError {
@@ -533,7 +597,7 @@ private struct BalanceRuleEditor: View {
 
     private func save() {
         let rule = normalized(draft)
-        guard rule.kind == .python else {
+        guard rule.kind == .python || rule.kind == .javascript else {
             onSave(rule)
             return
         }
@@ -542,7 +606,16 @@ private struct BalanceRuleEditor: View {
         isValidating = true
         Task { @MainActor in
             do {
-                try await BalanceService.validatePythonSyntax(rule.script)
+                switch rule.kind {
+                case .python:
+                    try await BalanceService.validatePythonSyntax(rule.script)
+                case .javascript:
+                    try BalanceService.validateJavaScriptTemplate(rule.script,
+                                                                  baseUrl: rule.baseUrl.isEmpty ? "https://example.com" : rule.baseUrl,
+                                                                  apiKey: rule.apiKey.isEmpty ? "test" : rule.apiKey)
+                case .deepseek:
+                    break
+                }
                 isValidating = false
                 onSave(rule)
             } catch {
@@ -555,10 +628,13 @@ private struct BalanceRuleEditor: View {
     private func normalized(_ rule: BalanceRule) -> BalanceRule {
         var rule = rule
         rule.name = rule.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        rule.baseUrl = rule.baseUrl.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         rule.currency = "CNY"
         if rule.kind == .deepseek {
+            rule.baseUrl = ""
             rule.script = ""
-        } else {
+        } else if rule.kind == .python {
+            rule.baseUrl = ""
             rule.apiKey = ""
         }
         return rule

@@ -19,7 +19,7 @@ final class BalanceStore: ObservableObject {
         didSet { persistModelRuleIDs() }
     }
 
-    @Published private(set) var balances: [String: ModelBalance] = [:]
+    @Published private(set) var ruleBalances: [String: ModelBalance] = [:]
     private let fetchBalance: @Sendable (BalanceRule, String, String) async -> ModelBalance
 
     init(defaults: UserDefaults = .standard,
@@ -61,7 +61,12 @@ final class BalanceStore: ObservableObject {
     }
 
     func balance(for model: String) -> ModelBalance? {
-        balances[model]
+        guard let rule = effectiveRule(for: model) else { return nil }
+        return ruleBalances[rule.id]
+    }
+
+    func balance(forRuleID ruleID: String) -> ModelBalance? {
+        ruleBalances[ruleID]
     }
 
     func setRule(_ rule: BalanceRule) {
@@ -75,6 +80,7 @@ final class BalanceStore: ObservableObject {
     func deleteRule(id: String) {
         guard id != BalanceRule.deepseekBuiltinID else { return }
         rules.removeAll { $0.id == id }
+        ruleBalances.removeValue(forKey: id)
         modelRuleIDs = modelRuleIDs.filter { $0.value != id }
     }
 
@@ -93,12 +99,9 @@ final class BalanceStore: ObservableObject {
         var ruleRequests: [String: (rule: BalanceRule, models: [String])] = [:]
 
         for model in uniqueModels {
-            guard let rule = effectiveRule(for: model) else {
-                balances.removeValue(forKey: model)
-                continue
-            }
+            guard let rule = effectiveRule(for: model) else { continue }
 
-            balances[model] = ModelBalance(state: .loading, updatedAt: balances[model]?.updatedAt)
+            ruleBalances[rule.id] = ModelBalance(state: .loading, updatedAt: ruleBalances[rule.id]?.updatedAt)
             if ruleRequests[rule.id] == nil {
                 ruleRequests[rule.id] = (rule, [])
             }
@@ -111,13 +114,13 @@ final class BalanceStore: ObservableObject {
                 guard let representativeModel = request.models.first else { continue }
                 group.addTask {
                     let result = await fetchBalance(request.rule, representativeModel, dbPath)
-                    return request.models.map { ($0, result) }
+                    return [(request.rule.id, result)]
                 }
             }
 
             for await results in group {
-                for (model, balance) in results {
-                    balances[model] = balance
+                for (ruleID, balance) in results {
+                    ruleBalances[ruleID] = balance
                 }
             }
         }
@@ -125,6 +128,13 @@ final class BalanceStore: ObservableObject {
 
     func refresh(model: String, dbPath: String) async {
         await refresh(models: [model], dbPath: dbPath)
+    }
+
+    func refresh(ruleID: String, dbPath: String) async {
+        guard let rule = rules.first(where: { $0.id == ruleID }) else { return }
+        ruleBalances[ruleID] = ModelBalance(state: .loading, updatedAt: ruleBalances[ruleID]?.updatedAt)
+        let result = await fetchBalance(rule, rule.name, dbPath)
+        ruleBalances[ruleID] = result
     }
 
     private static func ensureBuiltins(in rules: [BalanceRule]) -> [BalanceRule] {
