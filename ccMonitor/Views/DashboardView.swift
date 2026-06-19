@@ -55,7 +55,7 @@ struct DashboardView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-                .background(UB.Canvas.barBackground)
+                .background(settings.backgroundStyle == .glass ? Color.clear : UB.Canvas.barBackground)
                 .background(
                     GeometryReader { proxy in
                         Color.clear.preference(key: DashboardHeaderHeightKey.self,
@@ -93,6 +93,7 @@ struct DashboardView: View {
             }
         }
         .frame(width: 420)
+        .environment(\.appBackgroundStyle, settings.backgroundStyle)
         .onPreferenceChange(DashboardHeaderHeightKey.self) { height in
             headerHeight = height
             updateContentHeight()
@@ -101,7 +102,7 @@ struct DashboardView: View {
             contentHeight = height
             updateContentHeight()
         }
-        .background(UB.Canvas.canvasBackground)
+        .appBackground(settings.backgroundStyle)
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme(systemIsDark: settings.systemAppearanceIsDark))
         .sheet(isPresented: $showDatePicker) {
             datePickerSheet

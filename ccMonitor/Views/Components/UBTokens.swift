@@ -151,20 +151,61 @@ enum UB {
 struct UBCard: ViewModifier {
     var padding: CGFloat = UB.Spacing.xxl
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appBackgroundStyle) private var appBackgroundStyle
 
     func body(content: Content) -> some View {
         content
             .padding(padding)
-            .background(UB.Canvas.cardBackground)
+            .background {
+                RoundedRectangle(cornerRadius: UB.Radius.card, style: .continuous)
+                    .fill(cardFill)
+            }
             .clipShape(RoundedRectangle(cornerRadius: UB.Radius.card, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: UB.Radius.card, style: .continuous)
                     .stroke(
-                        UB.Canvas.lineColor(.outline, for: colorScheme),
-                        lineWidth: UB.Canvas.lineWidth(.outline, for: colorScheme)
+                        outlineColor,
+                        lineWidth: outlineWidth
                     )
             )
-            .shadow(color: Color.black.opacity(0.02), radius: 1, y: 1)
+            .shadow(color: shadowColor, radius: shadowRadius, y: 1)
+    }
+
+    private var cardFill: AnyShapeStyle {
+        switch appBackgroundStyle {
+        case .solid:
+            return AnyShapeStyle(UB.Canvas.cardBackground)
+        case .glass:
+            let color = colorScheme == .dark
+                ? Color(nsColor: .windowBackgroundColor).opacity(0.56)
+                : Color.white.opacity(0.88)
+            return AnyShapeStyle(color)
+        }
+    }
+
+    private var outlineColor: Color {
+        if appBackgroundStyle == .glass {
+            return Color.primary.opacity(colorScheme == .dark ? 0.36 : 0.18)
+        }
+        return UB.Canvas.lineColor(.outline, for: colorScheme)
+    }
+
+    private var outlineWidth: CGFloat {
+        if appBackgroundStyle == .glass {
+            return colorScheme == .dark ? 0.9 : 0.7
+        }
+        return UB.Canvas.lineWidth(.outline, for: colorScheme)
+    }
+
+    private var shadowColor: Color {
+        if appBackgroundStyle == .glass {
+            return Color.black.opacity(colorScheme == .dark ? 0.16 : 0.08)
+        }
+        return Color.black.opacity(0.02)
+    }
+
+    private var shadowRadius: CGFloat {
+        appBackgroundStyle == .glass ? 3 : 1
     }
 }
 
@@ -194,6 +235,27 @@ extension View {
     /// 套用 UsageBoard 风格的卡片容器。
     func ubCard(padding: CGFloat = UB.Spacing.xxl) -> some View {
         modifier(UBCard(padding: padding))
+    }
+
+    @ViewBuilder
+    func appBackground(_ style: AppBackgroundStyle) -> some View {
+        switch style {
+        case .solid:
+            background(UB.Canvas.canvasBackground)
+        case .glass:
+            background(.regularMaterial)
+        }
+    }
+}
+
+private struct AppBackgroundStyleKey: EnvironmentKey {
+    static let defaultValue: AppBackgroundStyle = .solid
+}
+
+extension EnvironmentValues {
+    var appBackgroundStyle: AppBackgroundStyle {
+        get { self[AppBackgroundStyleKey.self] }
+        set { self[AppBackgroundStyleKey.self] = newValue }
     }
 }
 

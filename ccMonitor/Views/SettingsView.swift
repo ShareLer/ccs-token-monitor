@@ -36,6 +36,8 @@ struct SettingsView: View {
             detail
         }
         .frame(width: 760, height: 500)
+        .environment(\.appBackgroundStyle, settings.backgroundStyle)
+        .appBackground(settings.backgroundStyle)
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme(systemIsDark: settings.systemAppearanceIsDark))
         .onAppear(perform: loadModels)
     }
@@ -54,7 +56,7 @@ struct SettingsView: View {
         }
         .frame(width: 168)
         .padding(.vertical, UB.Spacing.m)
-        .background(UB.Canvas.barBackground)
+        .background(settings.backgroundStyle == .glass ? Color.clear : UB.Canvas.barBackground)
     }
 
     private func sidebarItem(_ s: Section) -> some View {
@@ -102,7 +104,7 @@ struct SettingsView: View {
             .padding(.horizontal, UB.Spacing.xxl).padding(.vertical, UB.Spacing.l)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(UB.Canvas.canvasBackground)
+        .background(settings.backgroundStyle == .glass ? Color.clear : UB.Canvas.canvasBackground)
     }
 
     private func sectionHeader(_ title: String, _ subtitle: String? = nil) -> some View {
@@ -170,6 +172,15 @@ struct SettingsView: View {
                 Picker("", selection: $settings.appearanceMode) {
                     ForEach(AppAppearanceMode.allCases) { mode in
                         Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented).labelsHidden()
+            }
+            VStack(alignment: .leading, spacing: UB.Spacing.m) {
+                sectionHeader("背景样式")
+                Picker("", selection: $settings.backgroundStyle) {
+                    ForEach(AppBackgroundStyle.allCases) { style in
+                        Text(style.displayName).tag(style)
                     }
                 }
                 .pickerStyle(.segmented).labelsHidden()

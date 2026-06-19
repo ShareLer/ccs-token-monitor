@@ -55,8 +55,23 @@ enum AppAppearanceMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// 应用背景样式。与浅色/深色外观独立，毛玻璃会跟随当前外观呈现亮/暗材质。
+enum AppBackgroundStyle: String, CaseIterable, Identifiable {
+    case solid
+    case glass
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .solid: return "实色"
+        case .glass: return "毛玻璃"
+        }
+    }
+}
+
 final class SettingsStore: ObservableObject {
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private enum Keys {
         static let dbPath = "dbPath"
         static let refreshInterval = "refreshIntervalMinutes"
@@ -64,6 +79,7 @@ final class SettingsStore: ObservableObject {
         static let trendChartDisplayMode = "trendChartDisplayMode"
         static let screenshotDir = "screenshotDir"
         static let appearanceMode = "appearanceMode"
+        static let backgroundStyle = "backgroundStyle"
     }
 
     static var defaultDBPath: String {
@@ -93,10 +109,15 @@ final class SettingsStore: ObservableObject {
     @Published var appearanceMode: AppAppearanceMode {
         didSet { defaults.set(appearanceMode.rawValue, forKey: Keys.appearanceMode) }
     }
+    /// 应用背景样式（默认实色，保持现有行为）
+    @Published var backgroundStyle: AppBackgroundStyle {
+        didSet { defaults.set(backgroundStyle.rawValue, forKey: Keys.backgroundStyle) }
+    }
     /// 当前系统外观是否为深色。用于“跟随系统”模式下给 SwiftUI 一个明确的 colorScheme。
     @Published private(set) var systemAppearanceIsDark: Bool
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         self.dbPath = defaults.string(forKey: Keys.dbPath) ?? SettingsStore.defaultDBPath
         let saved = defaults.integer(forKey: Keys.refreshInterval)
         self.refreshIntervalMinutes = saved == 0 ? 5 : saved
@@ -104,6 +125,7 @@ final class SettingsStore: ObservableObject {
         self.trendChartDisplayMode = TrendChartDisplayMode(rawValue: defaults.string(forKey: Keys.trendChartDisplayMode) ?? "") ?? .bar
         self.screenshotDir = defaults.string(forKey: Keys.screenshotDir) ?? ""
         self.appearanceMode = AppAppearanceMode(rawValue: defaults.string(forKey: Keys.appearanceMode) ?? "") ?? .system
+        self.backgroundStyle = AppBackgroundStyle(rawValue: defaults.string(forKey: Keys.backgroundStyle) ?? "") ?? .solid
         self.systemAppearanceIsDark = SettingsStore.currentSystemAppearanceIsDark()
     }
 
