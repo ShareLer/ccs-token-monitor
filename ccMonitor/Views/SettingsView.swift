@@ -5,18 +5,21 @@ struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var pricing: PricingStore
     @ObservedObject var balance: BalanceStore
+    @ObservedObject var tokenPlan: TokenPlanStore
     let onSaved: () -> Void
 
     enum Section: String, CaseIterable, Identifiable {
         case basic = "基础设置"
         case pricing = "模型价格"
         case balance = "余额逻辑"
+        case tokenPlan = "Token Plan"
         var id: String { rawValue }
         var icon: String {
             switch self {
             case .basic: return "slider.horizontal.3"
             case .pricing: return "dollarsign.circle"
             case .balance: return "creditcard"
+            case .tokenPlan: return "chart.pie"
             }
         }
     }
@@ -85,6 +88,8 @@ struct SettingsView: View {
                         pricingSection
                     case .balance:
                         balanceSection
+                    case .tokenPlan:
+                        tokenPlanSection
                     }
                 }
                 .padding(UB.Spacing.xxl)
@@ -218,6 +223,17 @@ struct SettingsView: View {
             balanceRulesSection
             balanceModelMappingSection
         }
+    }
+
+    private var tokenPlanSection: some View {
+        VStack(alignment: .leading, spacing: UB.Spacing.xl) {
+            sectionHeader("Token Plan 额度", "启用后随首页刷新一起更新；未启用的计划不会显示在首页")
+            ForEach(TokenPlanConfigID.allCases) { id in
+                tokenPlanConfigRow(id)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ubCard()
     }
 
     private var balanceRulesSection: some View {
@@ -373,6 +389,120 @@ struct SettingsView: View {
         .background(UB.Canvas.canvasBackground)
         .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
         .overlay(rowOutline)
+    }
+
+    private func tokenPlanConfigRow(_ id: TokenPlanConfigID) -> some View {
+        let config = tokenPlan.config(for: id)
+        return VStack(alignment: .leading, spacing: UB.Spacing.l) {
+            HStack(alignment: .center, spacing: UB.Spacing.m) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(id.displayName)
+                        .font(UB.Font.cardTitle)
+                    Text(id.subtitle)
+                        .font(UB.Font.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                tokenPlanStatusLabel(id)
+                Toggle("启用", isOn: tokenPlanEnabledBinding(id))
+                    .toggleStyle(.switch)
+            }
+
+            if config.enabled {
+                labeledTokenPlanField("API Key") {
+                    SecureField("sk-...", text: tokenPlanAPIKeyBinding(id))
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                HStack {
+                    Label(providerText(for: config), systemImage: providerIcon(for: config))
+                        .font(UB.Font.caption)
+                        .foregroundStyle(providerColor(for: config))
+                    Spacer()
+                    Button {
+                        Task { await tokenPlan.refresh() }
+                    } label: {
+                        Label("测试/刷新", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(!config.isConfigured || tokenPlan.state(for: id) == .loading)
+                }
+            }
+        }
+        .padding(.horizontal, UB.Spacing.l)
+        .padding(.vertical, UB.Spacing.m)
+        .background(UB.Canvas.canvasBackground)
+        .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
+        .overlay(rowOutline)
+    }
+
+    private func tokenPlanEnabledBinding(_ id: TokenPlanConfigID) -> Binding<Bool> {
+        Binding(
+            get: { tokenPlan.config(for: id).enabled },
+            set: { enabled in
+                var config = tokenPlan.config(for: id)
+                config.enabled = enabled
+                tokenPlan.setConfig(config)
+                if !enabled {
+                    Task { await tokenPlan.refresh() }
+                }
+            }
+        )
+    }
+
+    private func tokenPlanAPIKeyBinding(_ id: TokenPlanConfigID) -> Binding<String> {
+        Binding(
+            get: { tokenPlan.config(for: id).apiKey },
+            set: { value in
+                var config = tokenPlan.config(for: id)
+                config.apiKey = value
+                tokenPlan.setConfig(config)
+            }
+        )
+    }
+
+    private func providerText(for config: TokenPlanConfig) -> String {
+        guard let provider = config.detectedProvider else {
+            return "供应商未配置"
+        }
+        return "使用 \(provider.displayName)"
+    }
+
+    private func providerIcon(for config: TokenPlanConfig) -> String {
+        config.detectedProvider == nil ? "exclamationmark.triangle" : "checkmark.circle"
+    }
+
+    private func providerColor(for config: TokenPlanConfig) -> Color {
+        config.detectedProvider == nil ? .orange : .secondary
+    }
+
+    private func tokenPlanStatusLabel(_ id: TokenPlanConfigID) -> some View {
+        Group {
+            switch tokenPlan.state(for: id) {
+            case .idle:
+                Text("未查询")
+                    .foregroundStyle(.secondary)
+            case .loading:
+                Text("查询中")
+                    .foregroundStyle(.secondary)
+            case .loaded:
+                Text("已更新")
+                    .foregroundStyle(UB.Palette.balance)
+            case .failed:
+                Text("失败")
+                    .foregroundStyle(.red)
+            }
+        }
+        .font(UB.Font.caption)
+    }
+
+    private func labeledTokenPlanField<Content: View>(_ label: String,
+                                                      @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: UB.Spacing.s) {
+            Text(label)
+                .font(UB.Font.caption)
+                .foregroundStyle(.secondary)
+            content()
+        }
     }
 
     private func balanceRuleSelectionBinding(_ model: String) -> Binding<String> {
@@ -685,5 +815,5 @@ private extension NSView {
 }
 
 #Preview {
-    SettingsView(settings: SettingsStore(), pricing: PricingStore(), balance: BalanceStore(), onSaved: {})
+    SettingsView(settings: SettingsStore(), pricing: PricingStore(), balance: BalanceStore(), tokenPlan: TokenPlanStore(), onSaved: {})
 }

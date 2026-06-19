@@ -79,6 +79,7 @@ struct DashboardView: View {
                                   pricing: store.pricing,
                                   balance: store.balance,
                                   dbPath: settings.dbPath)
+                    TokenPlanView(store: store.tokenPlan)
                     TrendChartView(points: store.trend, displayMode: settings.trendChartDisplayMode)
                     HeatmapView(days: store.heatmap, fitMode: settings.heatmapFitMode)
                 }
@@ -178,6 +179,7 @@ struct DashboardView: View {
             summary: store.summary,
             selectedRange: store.selectedRange,
             expandedModelIDs: expandedModelIDs,
+            tokenPlan: store.tokenPlan,
             trend: store.trend,
             heatmap: store.heatmap,
             heatmapFitMode: settings.heatmapFitMode,
@@ -253,6 +255,6 @@ private struct IconButton: View {
 }
 
 #Preview {
-    let store = DataStore(settings: SettingsStore(), pricing: PricingStore(), balance: BalanceStore())
+    let store = DataStore(settings: SettingsStore(), pricing: PricingStore(), balance: BalanceStore(), tokenPlan: TokenPlanStore())
     return DashboardView(store: store)
 }

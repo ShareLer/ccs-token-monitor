@@ -28,7 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let settings = SettingsStore()
         let pricing = PricingStore()
         let balance = BalanceStore()
-        store = DataStore(settings: settings, pricing: pricing, balance: balance)
+        let tokenPlan = TokenPlanStore()
+        store = DataStore(settings: settings, pricing: pricing, balance: balance, tokenPlan: tokenPlan)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
@@ -131,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let root = SettingsView(settings: store.settings, pricing: store.pricing, balance: store.balance,
+        let root = SettingsView(settings: store.settings, pricing: store.pricing, balance: store.balance, tokenPlan: store.tokenPlan,
                                 onSaved: { [weak self] in
                                     self?.settingsWindow?.performClose(nil)
                                     Task { await self?.store.refreshAll() }

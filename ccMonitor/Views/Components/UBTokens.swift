@@ -36,6 +36,7 @@ enum UB {
     enum Font {
         static let popoverTitle = SwiftUI.Font.system(size: 15, weight: .semibold)
         static let cardTitle = SwiftUI.Font.system(size: 13, weight: .semibold)
+        static let itemTitle = SwiftUI.Font.system(size: 12, weight: .medium)
         static let sectionTitle = SwiftUI.Font.system(size: 13, weight: .semibold)
         static let body = SwiftUI.Font.system(size: 12.5)
         static let label = SwiftUI.Font.system(size: 11.5)

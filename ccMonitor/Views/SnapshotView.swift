@@ -11,6 +11,7 @@ struct SnapshotView: View {
     let summary: SummaryStats
     let selectedRange: TimeRange
     let expandedModelIDs: Set<String>
+    let tokenPlan: TokenPlanStore?
     let trend: [TrendPoint]
     let heatmap: [HeatmapDay]
     let heatmapFitMode: HeatmapFitMode
@@ -33,6 +34,9 @@ struct SnapshotView: View {
                           pricing: pricing,
                           balance: balance,
                           dbPath: dbPath)
+            if let tokenPlan {
+                TokenPlanView(store: tokenPlan)
+            }
             TrendChartView(points: trend, displayMode: trendChartDisplayMode)
             HeatmapView(days: heatmap, fitMode: heatmapFitMode)
         }
@@ -59,6 +63,7 @@ struct SnapshotView: View {
         summary: SummaryStats(input: 1224276, output: 987654, cacheRead: 200000, cacheCreate: 36622),
         selectedRange: .today,
         expandedModelIDs: ["claude-sonnet-4-6"],
+        tokenPlan: nil,
         trend: (1...20).flatMap { i -> [TrendPoint] in
             let d = String(format: "2026-06-%02d", i)
             return [TrendPoint(day: d, model: "claude-sonnet-4-6", total: 800_000 + i * 120_000)]

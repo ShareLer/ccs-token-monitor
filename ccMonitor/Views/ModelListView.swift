@@ -57,7 +57,7 @@ struct ModelListView: View {
             VStack(alignment: .leading, spacing: UB.Spacing.s) {
                 HStack(spacing: UB.Spacing.s) {
                     Text(u.model)
-                        .font(UB.Font.cardTitle)
+                        .font(UB.Font.itemTitle)
                         .lineLimit(2)
                         .truncationMode(.middle)
                         .minimumScaleFactor(0.9)
@@ -77,7 +77,7 @@ struct ModelListView: View {
     private func horizontalHeader(_ u: ModelUsage, isExpanded: Bool, valuesVisible: Bool) -> some View {
         HStack(spacing: UB.Spacing.s) {
             Text(u.model)
-                .font(UB.Font.cardTitle)
+                .font(UB.Font.itemTitle)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .help(u.model)

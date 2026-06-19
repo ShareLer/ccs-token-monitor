@@ -20,12 +20,14 @@ final class DataStore: ObservableObject {
     let settings: SettingsStore
     let pricing: PricingStore
     let balance: BalanceStore
+    let tokenPlan: TokenPlanStore
     private var timer: Timer?
 
-    init(settings: SettingsStore, pricing: PricingStore, balance: BalanceStore) {
+    init(settings: SettingsStore, pricing: PricingStore, balance: BalanceStore, tokenPlan: TokenPlanStore) {
         self.settings = settings
         self.pricing = pricing
         self.balance = balance
+        self.tokenPlan = tokenPlan
     }
 
     private var repo: UsageRepository { UsageRepository(dbPath: settings.dbPath) }
@@ -59,9 +61,11 @@ final class DataStore: ObservableObject {
             self.trend = trend
             self.heatmap = heat
             await balance.refresh(models: usages.map(\.model), dbPath: settings.dbPath)
+            await tokenPlan.refresh()
             self.loadError = nil
         } catch {
             self.loadError = describe(error)
+            await tokenPlan.refresh()
         }
         // 无论成功失败，刷新完成即重启定时器，使倒计时与下次自动刷新对齐
         // （手动刷新和自动刷新都经此处；仅在定时器已启动时才重启，避免初始 task 提前启动）

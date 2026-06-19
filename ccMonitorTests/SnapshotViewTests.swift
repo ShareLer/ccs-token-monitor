@@ -32,6 +32,7 @@ final class SnapshotViewTests: XCTestCase {
             summary: SummaryStats(input: 0, output: 0, cacheRead: 0, cacheCreate: 0),
             selectedRange: .today,
             expandedModelIDs: [],
+            tokenPlan: nil,
             trend: [],
             heatmap: [],
             heatmapFitMode: .fit,
