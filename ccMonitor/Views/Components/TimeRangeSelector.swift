@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// 顶部时间范围按钮组：当日 / 7d / 30d / 当月 / 自定义。
+/// 顶部时间范围按钮组：当日 / 7d / 30d / 当月 / 当年 / 自定义。
 struct TimeRangeSelector: View {
     @Binding var selected: TimeRange
     let onCustomTap: () -> Void
 
     private func isActive(_ r: TimeRange) -> Bool {
         switch (selected, r) {
-        case (.today, .today), (.last7d, .last7d), (.last30d, .last30d), (.thisMonth, .thisMonth): return true
+        case (.today, .today), (.last7d, .last7d), (.last30d, .last30d), (.thisMonth, .thisMonth), (.thisYear, .thisYear): return true
         case (.custom, .custom): return true
         default: return false
         }
@@ -34,6 +34,7 @@ struct TimeRangeSelector: View {
             chip("7天", .last7d)
             chip("30天", .last30d)
             chip("当月", .thisMonth)
+            chip("当年", .thisYear)
             chip("自定义", .custom(Date(), Date()), custom: true)
             Spacer()
         }

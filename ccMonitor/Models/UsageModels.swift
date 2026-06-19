@@ -84,5 +84,6 @@ enum TimeRange: Equatable {
     case last7d
     case last30d
     case thisMonth
+    case thisYear
     case custom(Date, Date)
 }
