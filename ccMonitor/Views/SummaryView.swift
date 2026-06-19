@@ -21,6 +21,8 @@ struct SummaryView: View {
                 statCol(formatTokens(summary.input + summary.cacheCreate), "输入")
                 Spacer()
                 statCol(formatTokens(summary.output), "输出")
+                Spacer()
+                statCol(formatTokens(summary.requestCount), "请求数")
             }
 
             UsageProgressBar(

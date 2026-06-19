@@ -126,6 +126,8 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(usages.map(\.model), ["alpha", "beta", "gamma", "delta", "eps"])
         XCTAssertEqual(usages[0].input, 1500)
         XCTAssertEqual(usages[0].total, 1500)
+        XCTAssertEqual(usages[0].requestCount, 2)
+        XCTAssertEqual(usages[1].requestCount, 1)
     }
 
     func test_fetchModelUsages_appliesModelSpecificTotalSemantics() throws {
@@ -203,6 +205,7 @@ final class UsageRepositoryTests: XCTestCase {
         let gpt = try XCTUnwrap(usages.first { $0.model == "gpt-5.5" })
         XCTAssertEqual(gpt.input, 20)
         XCTAssertEqual(gpt.total, 120)
+        XCTAssertEqual(gpt.requestCount, 1)
         XCTAssertEqual(gpt.cacheRate, 0.8, accuracy: 0.0001)
 
         let deepseek = try XCTUnwrap(usages.first { $0.model == "deepseek-v4-pro" })
@@ -243,6 +246,7 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(s.output, 22)
         XCTAssertEqual(s.cacheRead, 33)
         XCTAssertEqual(s.cacheCreate, 44)
+        XCTAssertEqual(s.requestCount, 2)
     }
 
     func test_fetchSummary_appliesModelSpecificTotalSemantics() throws {
@@ -319,6 +323,7 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(s.output, 65)
         XCTAssertEqual(s.cacheRead, 447)
         XCTAssertEqual(s.cacheCreate, 10)
+        XCTAssertEqual(s.requestCount, 7)
         XCTAssertEqual(s.total, 752)
         XCTAssertEqual(s.cacheRate, 447.0 / 687.0, accuracy: 0.0001)
     }

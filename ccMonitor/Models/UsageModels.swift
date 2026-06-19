@@ -8,14 +8,16 @@ struct ModelUsage: Identifiable, Equatable {
     let output: Int
     let cacheRead: Int
     let cacheCreate: Int
+    let requestCount: Int
     let total: Int
 
-    init(model: String, input: Int, output: Int, cacheRead: Int, cacheCreate: Int, total: Int? = nil) {
+    init(model: String, input: Int, output: Int, cacheRead: Int, cacheCreate: Int, requestCount: Int = 0, total: Int? = nil) {
         self.model = model
         self.input = input
         self.output = output
         self.cacheRead = cacheRead
         self.cacheCreate = cacheCreate
+        self.requestCount = requestCount
         self.total = total ?? (input + output + cacheRead + cacheCreate)
     }
 
@@ -41,6 +43,7 @@ struct SummaryStats: Equatable {
     let output: Int
     let cacheRead: Int
     let cacheCreate: Int
+    let requestCount: Int
     let total: Int
 
     var cacheRate: Double {
@@ -48,11 +51,12 @@ struct SummaryStats: Equatable {
         return denom == 0 ? 0 : Double(cacheRead) / Double(denom)
     }
 
-    init(input: Int, output: Int, cacheRead: Int, cacheCreate: Int, total: Int? = nil) {
+    init(input: Int, output: Int, cacheRead: Int, cacheCreate: Int, requestCount: Int = 0, total: Int? = nil) {
         self.input = input
         self.output = output
         self.cacheRead = cacheRead
         self.cacheCreate = cacheCreate
+        self.requestCount = requestCount
         self.total = total ?? (input + output + cacheRead + cacheCreate)
     }
 

@@ -42,6 +42,7 @@ struct UsageRepository {
                        COALESCE(SUM(output_tokens),0),
                        COALESCE(SUM(cache_read_tokens),0),
                        COALESCE(SUM(cache_creation_tokens),0),
+                       COUNT(*),
                        COALESCE(SUM(\(Self.displayTotalSQL)),0) AS total
                 FROM proxy_request_logs
                 WHERE created_at >= ? AND created_at < ?
@@ -54,7 +55,8 @@ struct UsageRepository {
                                          output: row.int(2),
                                          cacheRead: row.int(3),
                                          cacheCreate: row.int(4),
-                                         total: row.int(5)))
+                                         requestCount: row.int(5),
+                                         total: row.int(6)))
             }
             return usages
         }
@@ -67,13 +69,15 @@ struct UsageRepository {
             try db.query("""
                 SELECT COALESCE(SUM(\(Self.normalizedInputSQL)),0), COALESCE(SUM(output_tokens),0),
                        COALESCE(SUM(cache_read_tokens),0), COALESCE(SUM(cache_creation_tokens),0),
+                       COUNT(*),
                        COALESCE(SUM(\(Self.displayTotalSQL)),0)
                 FROM proxy_request_logs
                 WHERE created_at >= ? AND created_at < ?;
             """, ints: [window.start, window.end]) { row in
                 s = SummaryStats(input: row.int(0), output: row.int(1),
                                  cacheRead: row.int(2), cacheCreate: row.int(3),
-                                 total: row.int(4))
+                                 requestCount: row.int(4),
+                                 total: row.int(5))
             }
             return s
         }

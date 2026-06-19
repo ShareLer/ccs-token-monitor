@@ -170,6 +170,8 @@ struct ModelListView: View {
                 detailStat(formatTokens(u.input + u.cacheCreate), "输入")
                 verticalDivider()
                 detailStat(formatTokens(u.output), "输出")
+                verticalDivider()
+                detailStat(formatTokens(u.requestCount), "请求数")
             }
         }
         .padding(.top, UB.Spacing.xs)
