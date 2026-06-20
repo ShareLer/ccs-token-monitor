@@ -234,13 +234,18 @@ struct UBCard: ViewModifier {
             }
             .clipShape(RoundedRectangle(cornerRadius: UB.Radius.card, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: UB.Radius.card, style: .continuous)
-                    .stroke(
-                        outlineColor,
-                        lineWidth: outlineWidth
-                    )
+                cardOutline
             )
             .shadow(color: shadowColor, radius: shadowRadius, y: shadowY)
+    }
+
+    @ViewBuilder
+    private var cardOutline: some View {
+        let shape = RoundedRectangle(cornerRadius: UB.Radius.card, style: .continuous)
+        if appBackgroundStyle == .glass, colorScheme == .light {
+            shape.stroke(Color.black.opacity(0.10), lineWidth: 1)
+        }
+        shape.stroke(outlineColor, lineWidth: outlineWidth)
     }
 
     private var cardFill: AnyShapeStyle {
@@ -268,7 +273,7 @@ struct UBCard: ViewModifier {
 
     private var shadowColor: Color {
         if appBackgroundStyle == .glass {
-            return UB.Glass.shadow(for: colorScheme)
+            return colorScheme == .light ? Color.black.opacity(0.13) : UB.Glass.shadow(for: colorScheme)
         }
         return Color.black.opacity(0.02)
     }
