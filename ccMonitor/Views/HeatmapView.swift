@@ -6,6 +6,7 @@ struct HeatmapView: View {
     let days: [HeatmapDay]
     var fitMode: HeatmapFitMode = .fit
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appBackgroundStyle) private var appBackgroundStyle
 
     private let gap: CGFloat = 3
     private let scrollCell: CGFloat = 11   // scroll 模式固定格子边长
@@ -55,7 +56,21 @@ struct HeatmapView: View {
     }
 
     private func color(_ lvl: Int) -> Color {
-        heatmapPalette[min(max(lvl, 0), heatmapPalette.count - 1)]
+        if appBackgroundStyle == .glass {
+            switch min(max(lvl, 0), 4) {
+            case 0:
+                return UB.Glass.controlFill(for: colorScheme)
+            case 1:
+                return Color(hex: 0x66B8FF).opacity(colorScheme == .dark ? 0.30 : 0.38)
+            case 2:
+                return Color(hex: 0x39D0C8).opacity(colorScheme == .dark ? 0.42 : 0.52)
+            case 3:
+                return Color(hex: 0x42C86F).opacity(colorScheme == .dark ? 0.58 : 0.68)
+            default:
+                return Color(hex: 0xB8F26A).opacity(colorScheme == .dark ? 0.78 : 0.86)
+            }
+        }
+        return heatmapPalette[min(max(lvl, 0), heatmapPalette.count - 1)]
     }
 
     private var heatmapPalette: [Color] {
@@ -120,8 +135,13 @@ struct HeatmapView: View {
                     VStack(spacing: gap) {
                         ForEach(Array(col.enumerated()), id: \.offset) { _, day in
                             let key = Self.dayFormatter.string(from: day)
+                            let value = totalByDay[key] ?? 0
                             RoundedRectangle(cornerRadius: max(1, cell * 0.18))
-                                .fill(color(level(totalByDay[key] ?? 0)))
+                                .fill(color(level(value)))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: max(1, cell * 0.18))
+                                        .stroke(tileStroke(for: value), lineWidth: appBackgroundStyle == .glass ? 0.45 : 0)
+                                )
                                 .frame(width: cell, height: cell)
                         }
                     }
@@ -150,6 +170,13 @@ struct HeatmapView: View {
         let date = grid[col][row]
         let key = Self.dayFormatter.string(from: date)
         return HoverInfo(date: date, total: totalByDay[key] ?? 0)
+    }
+
+    private func tileStroke(for total: Int) -> Color {
+        if total > 0 {
+            return Color.white.opacity(colorScheme == .dark ? 0.10 : 0.18)
+        }
+        return UB.Glass.subtleBorder(for: colorScheme)
     }
 
     /// 月份标签：每列首日是月初（≤7号）时标出月份。

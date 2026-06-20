@@ -29,6 +29,7 @@ enum UB {
         static let card: CGFloat = 10
         static let bar: CGFloat = 5
         static let tile: CGFloat = 6
+        static let surface: CGFloat = 8
         static let control: CGFloat = 5
         static let pill: CGFloat = 999
     }
@@ -92,6 +93,54 @@ enum UB {
             case .hairline, .grid:
                 return 0.5
             }
+        }
+    }
+
+    enum Glass {
+        static func canvasTint(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.black.opacity(0.06)
+                : Color.white.opacity(0.03)
+        }
+
+        static func cardFill(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.black.opacity(0.15)
+                : Color.white.opacity(0.14)
+        }
+
+        static func cardFillStrong(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.black.opacity(0.20)
+                : Color.white.opacity(0.18)
+        }
+
+        static func controlFill(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.white.opacity(0.09)
+                : Color.white.opacity(0.15)
+        }
+
+        static func border(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.white.opacity(0.24)
+                : Color.white.opacity(0.40)
+        }
+
+        static func subtleBorder(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.white.opacity(0.18)
+                : Color.white.opacity(0.34)
+        }
+
+        static func shadow(for colorScheme: ColorScheme) -> Color {
+            Color.black.opacity(colorScheme == .dark ? 0.28 : 0.10)
+        }
+
+        static func tooltipFill(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark
+                ? Color.black.opacity(0.66)
+                : Color.black.opacity(0.76)
         }
     }
 
@@ -168,7 +217,7 @@ struct UBCard: ViewModifier {
                         lineWidth: outlineWidth
                     )
             )
-            .shadow(color: shadowColor, radius: shadowRadius, y: 1)
+            .shadow(color: shadowColor, radius: shadowRadius, y: shadowY)
     }
 
     private var cardFill: AnyShapeStyle {
@@ -176,16 +225,13 @@ struct UBCard: ViewModifier {
         case .solid:
             return AnyShapeStyle(UB.Canvas.cardBackground)
         case .glass:
-            let color = colorScheme == .dark
-                ? Color(nsColor: .windowBackgroundColor).opacity(0.56)
-                : Color.white.opacity(0.88)
-            return AnyShapeStyle(color)
+            return AnyShapeStyle(UB.Glass.cardFill(for: colorScheme))
         }
     }
 
     private var outlineColor: Color {
         if appBackgroundStyle == .glass {
-            return Color.primary.opacity(colorScheme == .dark ? 0.36 : 0.18)
+            return UB.Glass.border(for: colorScheme)
         }
         return UB.Canvas.lineColor(.outline, for: colorScheme)
     }
@@ -199,13 +245,17 @@ struct UBCard: ViewModifier {
 
     private var shadowColor: Color {
         if appBackgroundStyle == .glass {
-            return Color.black.opacity(colorScheme == .dark ? 0.16 : 0.08)
+            return UB.Glass.shadow(for: colorScheme)
         }
         return Color.black.opacity(0.02)
     }
 
     private var shadowRadius: CGFloat {
-        appBackgroundStyle == .glass ? 3 : 1
+        appBackgroundStyle == .glass ? 5 : 1
+    }
+
+    private var shadowY: CGFloat {
+        appBackgroundStyle == .glass ? 6 : 1
     }
 }
 
@@ -219,15 +269,28 @@ struct UBDivider: View {
     var style: UB.Canvas.LineStyle = .divider
     var length: CGFloat?
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appBackgroundStyle) private var appBackgroundStyle
 
     var body: some View {
         let lineWidth = UB.Canvas.lineWidth(style, for: colorScheme)
         Rectangle()
-            .fill(UB.Canvas.lineColor(style, for: colorScheme))
+            .fill(lineColor)
             .frame(
                 width: orientation == .vertical ? lineWidth : length,
                 height: orientation == .horizontal ? lineWidth : length
             )
+    }
+
+    private var lineColor: Color {
+        if appBackgroundStyle == .glass {
+            switch style {
+            case .hairline, .grid:
+                return UB.Glass.subtleBorder(for: colorScheme)
+            case .divider, .outline:
+                return UB.Glass.border(for: colorScheme)
+            }
+        }
+        return UB.Canvas.lineColor(style, for: colorScheme)
     }
 }
 
@@ -243,7 +306,20 @@ extension View {
         case .solid:
             background(UB.Canvas.canvasBackground)
         case .glass:
-            background(.regularMaterial)
+            modifier(AppGlassBackground())
+        }
+    }
+}
+
+private struct AppGlassBackground: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.background {
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(UB.Glass.canvasTint(for: colorScheme))
+            }
         }
     }
 }

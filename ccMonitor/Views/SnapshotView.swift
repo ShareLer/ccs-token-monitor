@@ -18,6 +18,7 @@ struct SnapshotView: View {
     let trendChartDisplayMode: TrendChartDisplayMode
     let appearanceMode: AppAppearanceMode
     let systemAppearanceIsDark: Bool
+    var backgroundStyle: AppBackgroundStyle = .solid
 
     var width: CGFloat = 420
 
@@ -42,7 +43,8 @@ struct SnapshotView: View {
         }
         .padding(UB.Spacing.xxl)
         .frame(width: width)
-        .background(UB.Canvas.canvasBackground)
+        .appBackground(backgroundStyle)
+        .environment(\.appBackgroundStyle, backgroundStyle)
         .environment(\.colorScheme, appearanceMode.preferredColorScheme(systemIsDark: systemAppearanceIsDark))
     }
 }

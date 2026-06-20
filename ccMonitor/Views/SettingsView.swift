@@ -119,9 +119,17 @@ struct SettingsView: View {
     private var rowOutline: some View {
         RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous)
             .stroke(
-                UB.Canvas.lineColor(.outline, for: colorScheme),
-                lineWidth: UB.Canvas.lineWidth(.hairline, for: colorScheme)
+                settings.backgroundStyle == .glass
+                    ? UB.Glass.subtleBorder(for: colorScheme)
+                    : UB.Canvas.lineColor(.outline, for: colorScheme),
+                lineWidth: settings.backgroundStyle == .glass ? 0.7 : UB.Canvas.lineWidth(.hairline, for: colorScheme)
             )
+    }
+
+    private var rowFill: Color {
+        settings.backgroundStyle == .glass
+            ? UB.Glass.controlFill(for: colorScheme)
+            : UB.Canvas.canvasBackground
     }
 
     private var dataSourceSection: some View {
@@ -304,7 +312,7 @@ struct SettingsView: View {
         }
         .padding(.horizontal, UB.Spacing.l)
         .padding(.vertical, UB.Spacing.s)
-        .background(UB.Canvas.canvasBackground)
+        .background(rowFill)
         .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
         .overlay(rowOutline)
     }
@@ -397,7 +405,7 @@ struct SettingsView: View {
         }
         .padding(.horizontal, UB.Spacing.l)
         .padding(.vertical, UB.Spacing.s)
-        .background(UB.Canvas.canvasBackground)
+        .background(rowFill)
         .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
         .overlay(rowOutline)
     }
@@ -441,7 +449,7 @@ struct SettingsView: View {
         }
         .padding(.horizontal, UB.Spacing.l)
         .padding(.vertical, UB.Spacing.m)
-        .background(UB.Canvas.canvasBackground)
+        .background(rowFill)
         .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
         .overlay(rowOutline)
     }
@@ -550,7 +558,7 @@ struct SettingsView: View {
             }
         }
         .padding(.horizontal, UB.Spacing.l).padding(.vertical, UB.Spacing.s)
-        .background(UB.Canvas.canvasBackground)
+        .background(rowFill)
         .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
         .overlay(rowOutline)
     }

@@ -3,6 +3,7 @@ import SwiftUI
 /// 胶囊进度条（UsageBoard 风格）：主色淡底 + 主色填充 + 居中加粗文字。
 struct UsageProgressBar: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appBackgroundStyle) private var appBackgroundStyle
 
     let fraction: Double      // 0...1
     let text: String          // 叠加显示的文字，如 "12.5K / 1.2M"
@@ -14,19 +15,64 @@ struct UsageProgressBar: View {
             let ratio = max(0, min(1, fraction))
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous)
-                    .fill(tint.opacity(0.16))
+                    .fill(trackFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous)
+                            .stroke(trackStroke, lineWidth: appBackgroundStyle == .glass ? 0.7 : 0)
+                    )
                 RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous)
-                    .fill(tint)
+                    .fill(fillStyle)
                     .frame(width: ratio * geo.size.width)
+                    .overlay(alignment: .top) {
+                        if appBackgroundStyle == .glass && ratio > 0 {
+                            RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous)
+                                .fill(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.28))
+                                .frame(height: 1)
+                        }
+                    }
                 Text(text)
                     .font(.system(size: 11, weight: .bold))
                     .monospacedDigit()
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .foregroundColor(labelColor)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
         .frame(height: height)
         .clipShape(RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous))
+    }
+
+    private var trackFill: Color {
+        if appBackgroundStyle == .glass {
+            return UB.Glass.controlFill(for: colorScheme)
+        }
+        return tint.opacity(0.16)
+    }
+
+    private var trackStroke: Color {
+        UB.Glass.subtleBorder(for: colorScheme)
+    }
+
+    private var fillStyle: AnyShapeStyle {
+        if appBackgroundStyle == .glass {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        tint.opacity(colorScheme == .dark ? 0.70 : 0.78),
+                        tint.opacity(colorScheme == .dark ? 0.48 : 0.58),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
+        return AnyShapeStyle(tint)
+    }
+
+    private var labelColor: Color {
+        if appBackgroundStyle == .glass {
+            return colorScheme == .dark ? .white.opacity(0.92) : .primary.opacity(0.86)
+        }
+        return colorScheme == .dark ? .white : .black
     }
 }
 

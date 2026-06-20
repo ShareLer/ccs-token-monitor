@@ -4,6 +4,8 @@ import SwiftUI
 struct TimeRangeSelector: View {
     @Binding var selected: TimeRange
     let onCustomTap: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appBackgroundStyle) private var appBackgroundStyle
 
     private func isActive(_ r: TimeRange) -> Bool {
         switch (selected, r) {
@@ -21,11 +23,44 @@ struct TimeRangeSelector: View {
             Text(title)
                 .font(UB.Font.label)
                 .padding(.horizontal, UB.Spacing.xl).padding(.vertical, UB.Spacing.s)
-                .background(active ? UB.Palette.accent : UB.Palette.accent.opacity(0.10))
-                .foregroundColor(active ? .white : UB.Palette.accent)
+                .background(chipFill(active: active), in: Capsule())
+                .overlay(Capsule().stroke(chipBorder(active: active), lineWidth: appBackgroundStyle == .glass ? 0.7 : 0))
+                .foregroundColor(active ? .white : inactiveText)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+
+    private func chipFill(active: Bool) -> AnyShapeStyle {
+        if active {
+            if appBackgroundStyle != .glass {
+                return AnyShapeStyle(UB.Palette.accent)
+            }
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [UB.Palette.accent, UB.Palette.accent.opacity(0.76)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
+        if appBackgroundStyle == .glass {
+            return AnyShapeStyle(UB.Glass.controlFill(for: colorScheme))
+        }
+        return AnyShapeStyle(UB.Palette.accent.opacity(0.10))
+    }
+
+    private func chipBorder(active: Bool) -> Color {
+        if active {
+            return Color.white.opacity(appBackgroundStyle == .glass ? 0.22 : 0)
+        }
+        return UB.Glass.subtleBorder(for: colorScheme)
+    }
+
+    private var inactiveText: Color {
+        appBackgroundStyle == .glass
+            ? .primary.opacity(colorScheme == .dark ? 0.78 : 0.72)
+            : UB.Palette.accent
     }
 
     var body: some View {

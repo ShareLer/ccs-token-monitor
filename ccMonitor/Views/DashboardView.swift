@@ -186,7 +186,8 @@ struct DashboardView: View {
             heatmapFitMode: settings.heatmapFitMode,
             trendChartDisplayMode: settings.trendChartDisplayMode,
             appearanceMode: settings.appearanceMode,
-            systemAppearanceIsDark: settings.systemAppearanceIsDark
+            systemAppearanceIsDark: settings.systemAppearanceIsDark,
+            backgroundStyle: settings.backgroundStyle
         )
         do {
             let url = try Screenshotter.save(snapshot, toDirectory: dir)

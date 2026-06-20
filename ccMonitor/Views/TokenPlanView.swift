@@ -201,24 +201,68 @@ private struct TokenPlanProgressBar: View {
     let text: String
     let color: Color
     let isPlaceholder: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appBackgroundStyle) private var appBackgroundStyle
 
     var body: some View {
         GeometryReader { proxy in
             let width = max(0, min(proxy.size.width * fraction, proxy.size.width))
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.primary.opacity(0.08))
+                    .fill(trackFill)
+                    .overlay(
+                        Capsule()
+                            .stroke(trackStroke, lineWidth: appBackgroundStyle == .glass ? 0.7 : 0)
+                    )
                 Capsule()
-                    .fill(color.opacity(isPlaceholder ? 0.25 : 0.86))
+                    .fill(fillStyle)
                     .frame(width: width)
+                    .overlay(alignment: .top) {
+                        if appBackgroundStyle == .glass && width > 0 {
+                            Capsule()
+                                .fill(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.26))
+                                .frame(height: 1)
+                        }
+                    }
                 Text(text)
                     .font(.system(size: 10, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(isPlaceholder ? .secondary : .primary)
+                    .foregroundStyle(isPlaceholder ? .secondary : labelColor)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .minimumScaleFactor(0.8)
             }
         }
         .frame(height: TokenPlanLayout.progressHeight)
+    }
+
+    private var trackFill: Color {
+        if appBackgroundStyle == .glass {
+            return UB.Glass.controlFill(for: colorScheme)
+        }
+        return Color.primary.opacity(0.08)
+    }
+
+    private var trackStroke: Color {
+        UB.Glass.subtleBorder(for: colorScheme)
+    }
+
+    private var fillStyle: AnyShapeStyle {
+        let opacity = isPlaceholder ? 0.24 : (colorScheme == .dark ? 0.68 : 0.76)
+        if appBackgroundStyle == .glass {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [color.opacity(opacity), color.opacity(max(opacity - 0.18, 0.18))],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
+        return AnyShapeStyle(color.opacity(isPlaceholder ? 0.25 : 0.86))
+    }
+
+    private var labelColor: Color {
+        appBackgroundStyle == .glass
+            ? (colorScheme == .dark ? .white.opacity(0.9) : .primary.opacity(0.86))
+            : .primary
     }
 }
 

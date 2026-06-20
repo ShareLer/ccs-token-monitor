@@ -77,6 +77,7 @@ private struct StackedBarPlot: View {
     let segments: [(name: String, color: Color, values: [Int])]
     @State private var hoverIdx: Int?
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appBackgroundStyle) private var appBackgroundStyle
 
     private let leading: CGFloat = 36
     private let trailing: CGFloat = 12
@@ -187,7 +188,7 @@ private struct StackedBarPlot: View {
                             let segTop = yPos(base + v, plot) - yTop    // 相对柱顶
                             let segBot = yPos(base, plot) - yTop
                             Rectangle()
-                                .fill(segments[si].color.opacity(highlighted ? 1 : 0.85))
+                                .fill(segmentFill(segments[si].color, highlighted: highlighted))
                                 .frame(width: w, height: max(segBot - segTop, 0))
                                 .position(x: w / 2, y: (segTop + segBot) / 2)
                         }
@@ -200,7 +201,12 @@ private struct StackedBarPlot: View {
                 // 高亮整柱描边（不参与裁剪）
                 if highlighted {
                     UnevenRoundedRectangle(topLeadingRadius: 2, topTrailingRadius: 2)
-                        .stroke(Color.primary.opacity(0.45), lineWidth: 1)
+                        .stroke(
+                            appBackgroundStyle == .glass
+                                ? UB.Glass.border(for: colorScheme)
+                                : Color.primary.opacity(0.45),
+                            lineWidth: 1
+                        )
                         .frame(width: w + 2, height: barH + 2)
                         .position(x: cx, y: yTop + barH / 2)
                 }
@@ -252,10 +258,38 @@ private struct StackedBarPlot: View {
             .padding(8)
             .frame(maxWidth: tipMaxW, alignment: .leading)   // 上限封顶
             .fixedSize(horizontal: true, vertical: false)     // 未达上限时按内容收缩
-            .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.82)))
+            .background { tooltipBackground }
         }
         .frame(width: max(plot.width, 1), alignment: onLeft ? .leading : .trailing)
         .position(x: plot.midX, y: plot.minY + 4 + 36)
+    }
+
+    private func segmentFill(_ color: Color, highlighted: Bool) -> AnyShapeStyle {
+        if appBackgroundStyle == .glass {
+            let opacity = highlighted ? 0.82 : 0.62
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [color.opacity(opacity), color.opacity(max(opacity - 0.16, 0.35))],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+        }
+        return AnyShapeStyle(color.opacity(highlighted ? 1 : 0.85))
+    }
+
+    @ViewBuilder
+    private var tooltipBackground: some View {
+        if appBackgroundStyle == .glass {
+            RoundedRectangle(cornerRadius: UB.Radius.surface, style: .continuous)
+                .fill(UB.Glass.tooltipFill(for: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: UB.Radius.surface, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 0.7)
+                )
+        } else {
+            RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.82))
+        }
     }
 }
 
@@ -265,6 +299,7 @@ private struct LineTrendPlot: View {
     let series: [(name: String, color: Color, values: [Int])]
     @State private var hoverIdx: Int?
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appBackgroundStyle) private var appBackgroundStyle
 
     private let leading: CGFloat = 36
     private let trailing: CGFloat = 12
@@ -361,11 +396,11 @@ private struct LineTrendPlot: View {
                 if points.count >= 2 {
                     if series[si].name != "总计" {
                         fillPath(points: points, plot: plot)
-                            .fill(series[si].color.opacity(0.06))
+                            .fill(series[si].color.opacity(appBackgroundStyle == .glass ? 0.04 : 0.06))
                     }
                     smoothPath(points: points)
                         .stroke(
-                            series[si].color,
+                            series[si].color.opacity(appBackgroundStyle == .glass ? 0.86 : 1),
                             style: StrokeStyle(
                                 lineWidth: series[si].name == "总计" ? 2.2 : 1.5,
                                 lineCap: .round,
@@ -413,7 +448,7 @@ private struct LineTrendPlot: View {
         let onLeft = x > size.width / 2
         return ZStack(alignment: .topLeading) {
             Path { p in p.move(to: CGPoint(x: x, y: plot.minY)); p.addLine(to: CGPoint(x: x, y: plot.maxY)) }
-                .stroke(Color.secondary.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .stroke(Color.secondary.opacity(appBackgroundStyle == .glass ? 0.38 : 0.55), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
 
             ForEach(series.indices, id: \.self) { si in
                 let value = series[si].values[safe: index] ?? 0
@@ -463,9 +498,23 @@ private struct LineTrendPlot: View {
             .padding(8)
             .frame(maxWidth: tipMaxW, alignment: .leading)
             .fixedSize(horizontal: true, vertical: false)
-            .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.82)))
+            .background { tooltipBackground }
             .frame(width: max(plot.width, 1), alignment: onLeft ? .leading : .trailing)
             .position(x: plot.midX, y: plot.minY + 76)
+        }
+    }
+
+    @ViewBuilder
+    private var tooltipBackground: some View {
+        if appBackgroundStyle == .glass {
+            RoundedRectangle(cornerRadius: UB.Radius.surface, style: .continuous)
+                .fill(UB.Glass.tooltipFill(for: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: UB.Radius.surface, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 0.7)
+                )
+        } else {
+            RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.82))
         }
     }
 
