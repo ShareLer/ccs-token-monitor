@@ -130,6 +130,23 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(usages[1].requestCount, 1)
     }
 
+    func test_fetchModelUsages_canReturnAllRowsWithoutLimit() throws {
+        let path = try makeTempDB(rows: [
+            ("alpha", 110, 1000, 0, 0, 0),
+            ("beta", 120, 900, 0, 0, 0),
+            ("gamma", 130, 800, 0, 0, 0),
+            ("delta", 140, 700, 0, 0, 0),
+            ("eps", 150, 600, 0, 0, 0),
+            ("zeta", 160, 500, 0, 0, 0),
+        ])
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let repo = UsageRepository(dbPath: path)
+        let usages = try repo.fetchModelUsages(window: DateWindow(start: 100, end: 200), limit: nil)
+
+        XCTAssertEqual(usages.map(\.model), ["alpha", "beta", "gamma", "delta", "eps", "zeta"])
+    }
+
     func test_fetchModelUsages_appliesModelSpecificTotalSemantics() throws {
         let path = try makeTempDB(rows: [
             UsageRow(

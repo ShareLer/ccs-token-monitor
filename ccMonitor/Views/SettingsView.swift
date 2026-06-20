@@ -91,24 +91,27 @@ struct SettingsView: View {
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: UB.Spacing.xl) {
-                    switch section {
-                    case .dataSource:
-                        dataSourceSection
-                    case .display:
-                        generalSection
-                    case .pricing:
-                        pricingSection
-                    case .balance:
-                        balanceSection
-                    case .tokenPlan:
-                        tokenPlanSection
-                    case .diagnostics:
-                        diagnosticsSection
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: UB.Spacing.xl) {
+                        switch section {
+                        case .dataSource:
+                            dataSourceSection
+                        case .display:
+                            generalSection
+                        case .pricing:
+                            pricingSection
+                        case .balance:
+                            balanceSection
+                        case .tokenPlan:
+                            tokenPlanSection
+                        case .diagnostics:
+                            diagnosticsSection
+                        }
                     }
+                    .frame(width: max(0, proxy.size.width - UB.Spacing.xxl * 2), alignment: .leading)
+                    .padding(UB.Spacing.xxl)
                 }
-                .padding(UB.Spacing.xxl)
             }
             UBDivider()
             HStack {
@@ -146,6 +149,18 @@ struct SettingsView: View {
             : UB.Canvas.canvasBackground
     }
 
+    private var settingSeparator: some View {
+        UBDivider(style: .hairline)
+    }
+
+    private var settingControlColumnWidth: CGFloat {
+        260
+    }
+
+    private var settingControlTrailingInset: CGFloat {
+        UB.Spacing.m
+    }
+
     private var dataSourceSection: some View {
         VStack(alignment: .leading, spacing: UB.Spacing.xl) {
             VStack(alignment: .leading, spacing: UB.Spacing.l) {
@@ -179,64 +194,152 @@ struct SettingsView: View {
 
     private var generalSection: some View {
         VStack(alignment: .leading, spacing: UB.Spacing.xl) {
-            VStack(alignment: .leading, spacing: UB.Spacing.m) {
-                sectionHeader("刷新间隔")
-                Picker("", selection: $settings.refreshIntervalMinutes) {
-                    Text("每5分钟").tag(5)
-                    Text("每10分钟").tag(10)
-                    Text("每15分钟").tag(15)
-                    Text("每30分钟").tag(30)
+            settingsGroup("模型用量明细", "控制首页模型列表的数量和排序") {
+                settingRow("展示数量", "模型用量明细展示的模型数") {
+                    modelUsageCountControl
                 }
-                .pickerStyle(.segmented).labelsHidden()
+                settingSeparator
+                settingRow("TopN 逻辑", "模型用量明细的排序口径") {
+                    modelUsageSortPicker
+                }
             }
-            VStack(alignment: .leading, spacing: UB.Spacing.m) {
-                sectionHeader("开机启动")
-                Toggle("登录 macOS 后自动启动", isOn: launchAtLoginBinding)
-                    .toggleStyle(.switch)
-                if let launchAtLoginError {
-                    Label(launchAtLoginError, systemImage: "exclamationmark.triangle")
+
+            settingsGroup("图表展示", "控制趋势图和热力图的展示方式") {
+                settingRow("近30日趋势") {
+                    Picker("", selection: $settings.trendChartDisplayMode) {
+                        ForEach(TrendChartDisplayMode.allCases) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: settingControlColumnWidth)
+                }
+                settingSeparator
+                settingRow("热力图显示") {
+                    Picker("", selection: $settings.heatmapFitMode) {
+                        Text("完全显示本年").tag(HeatmapFitMode.fit)
+                        Text("固定大小可滑动").tag(HeatmapFitMode.scroll)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: settingControlColumnWidth)
+                }
+            }
+
+            settingsGroup("外观", "控制窗口外观和背景材质") {
+                settingRow("外观") {
+                    Picker("", selection: $settings.appearanceMode) {
+                        ForEach(AppAppearanceMode.allCases) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: settingControlColumnWidth)
+                }
+                settingSeparator
+                settingRow("背景样式") {
+                    Picker("", selection: $settings.backgroundStyle) {
+                        ForEach(AppBackgroundStyle.allCases) { style in
+                            Text(style.displayName).tag(style)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: settingControlColumnWidth)
+                }
+            }
+
+            settingsGroup("运行行为", "控制刷新节奏和登录启动") {
+                settingRow("刷新间隔") {
+                    Picker("", selection: $settings.refreshIntervalMinutes) {
+                        ForEach(SettingsStore.refreshIntervalOptions, id: \.self) { minutes in
+                            Text("\(minutes)min").tag(minutes)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: settingControlColumnWidth)
+                }
+                settingSeparator
+                VStack(alignment: .leading, spacing: UB.Spacing.s) {
+                    settingRow("开机启动", "登录 macOS 后自动启动") {
+                        Toggle("", isOn: launchAtLoginBinding)
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                    }
+                    if let launchAtLoginError {
+                        Label(launchAtLoginError, systemImage: "exclamationmark.triangle")
+                            .font(UB.Font.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func settingsGroup<Content: View>(_ title: String,
+                                              _ subtitle: String? = nil,
+                                              @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: UB.Spacing.l) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(UB.Font.cardTitle)
+                    .foregroundStyle(.secondary)
+                if let subtitle {
+                    Text(subtitle)
                         .font(UB.Font.caption)
-                        .foregroundColor(.red)
+                        .foregroundStyle(.secondary)
                 }
             }
             VStack(alignment: .leading, spacing: UB.Spacing.m) {
-                sectionHeader("外观")
-                Picker("", selection: $settings.appearanceMode) {
-                    ForEach(AppAppearanceMode.allCases) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented).labelsHidden()
-            }
-            VStack(alignment: .leading, spacing: UB.Spacing.m) {
-                sectionHeader("背景样式")
-                Picker("", selection: $settings.backgroundStyle) {
-                    ForEach(AppBackgroundStyle.allCases) { style in
-                        Text(style.displayName).tag(style)
-                    }
-                }
-                .pickerStyle(.segmented).labelsHidden()
-            }
-            VStack(alignment: .leading, spacing: UB.Spacing.m) {
-                sectionHeader("热力图显示")
-                Picker("", selection: $settings.heatmapFitMode) {
-                    Text("完全显示本年").tag(HeatmapFitMode.fit)
-                    Text("固定大小可滑动").tag(HeatmapFitMode.scroll)
-                }
-                .pickerStyle(.segmented).labelsHidden()
-            }
-            VStack(alignment: .leading, spacing: UB.Spacing.m) {
-                sectionHeader("近30日趋势")
-                Picker("", selection: $settings.trendChartDisplayMode) {
-                    ForEach(TrendChartDisplayMode.allCases) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented).labelsHidden()
+                content()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .ubCard()
+    }
+
+    private func settingRow<Content: View>(_ title: String,
+                                           _ subtitle: String? = nil,
+                                           @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .center, spacing: UB.Spacing.l) {
+            sectionHeader(title, subtitle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            content()
+                .frame(width: settingControlColumnWidth, alignment: .trailing)
+                .padding(.trailing, settingControlTrailingInset)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var modelUsageCountControl: some View {
+        HStack(spacing: UB.Spacing.s) {
+            Text("\(settings.modelUsageDisplayCount)")
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.primary)
+                .frame(width: 52, height: 24)
+                .background(rowFill)
+                .clipShape(RoundedRectangle(cornerRadius: UB.Radius.control, style: .continuous))
+                .overlay(rowOutline)
+            Stepper("", value: $settings.modelUsageDisplayCount,
+                    in: SettingsStore.minModelUsageDisplayCount...SettingsStore.maxModelUsageDisplayCount)
+                .labelsHidden()
+        }
+        .frame(width: settingControlColumnWidth, alignment: .trailing)
+    }
+
+    private var modelUsageSortPicker: some View {
+        Picker("", selection: $settings.modelUsageSortMetric) {
+            ForEach(ModelUsageSortMetric.allCases) { metric in
+                Text(metric.displayName).tag(metric)
+            }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .frame(width: settingControlColumnWidth)
     }
 
     private var diagnosticsSection: some View {

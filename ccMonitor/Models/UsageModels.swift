@@ -35,6 +35,69 @@ struct ModelUsage: Identifiable, Equatable {
          + Double(cacheCreate) * p.cacheCreate) / 1_000_000
     }
 
+    func topNValue(for metric: ModelUsageSortMetric, pricing: ModelPricing) -> Double {
+        switch metric {
+        case .totalTokens:
+            return Double(total)
+        case .inputTokens:
+            return Double(input + cacheCreate)
+        case .outputTokens:
+            return Double(output)
+        case .cacheTokens:
+            return Double(cacheRead)
+        case .cacheRate:
+            return cacheRate
+        case .requestCount:
+            return Double(requestCount)
+        case .cost:
+            return cost(with: pricing)
+        }
+    }
+}
+
+enum ModelUsageSortMetric: String, CaseIterable, Identifiable {
+    case totalTokens
+    case inputTokens
+    case outputTokens
+    case cacheTokens
+    case cacheRate
+    case requestCount
+    case cost
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .totalTokens: return "总Token量"
+        case .inputTokens: return "输入Token量"
+        case .outputTokens: return "输出Token量"
+        case .cacheTokens: return "缓存量"
+        case .cacheRate: return "缓存率"
+        case .requestCount: return "请求数"
+        case .cost: return "消费金额"
+        }
+    }
+}
+
+extension Array where Element == ModelUsage {
+    func topModels(limit: Int,
+                   sortMetric: ModelUsageSortMetric,
+                   pricing: (String) -> ModelPricing) -> [ModelUsage] {
+        let clampedLimit = Swift.min(Swift.max(limit, 1), 10)
+        return sorted { lhs, rhs in
+            let lhsValue = lhs.topNValue(for: sortMetric, pricing: pricing(lhs.model))
+            let rhsValue = rhs.topNValue(for: sortMetric, pricing: pricing(rhs.model))
+            if lhsValue != rhsValue {
+                return lhsValue > rhsValue
+            }
+            if lhs.total != rhs.total {
+                return lhs.total > rhs.total
+            }
+            return lhs.model < rhs.model
+        }
+        .prefix(clampedLimit)
+        .map { $0 }
+    }
 }
 
 /// ② 汇总区，跟随时间范围，不分模型，input 为未命中缓存输入。

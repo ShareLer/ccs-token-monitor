@@ -23,12 +23,15 @@ final class DataStore: ObservableObject {
     let tokenPlan: TokenPlanStore
     private let log = AppLog("DataStore")
     private var timer: Timer?
+    private var allModelUsages: [ModelUsage] = []
+    private var cancellables = Set<AnyCancellable>()
 
     init(settings: SettingsStore, pricing: PricingStore, balance: BalanceStore, tokenPlan: TokenPlanStore) {
         self.settings = settings
         self.pricing = pricing
         self.balance = balance
         self.tokenPlan = tokenPlan
+        observeModelUsageDisplaySettings()
     }
 
     private var repo: UsageRepository { UsageRepository(dbPath: settings.dbPath) }
@@ -50,22 +53,23 @@ final class DataStore: ObservableObject {
                 let trendWindow = DateWindows.lastDays(30, now: now, calendar: cal)
                 let heatWindow = DateWindows.thisYear(now: now, calendar: cal)
                 return (
-                    try repo.fetchModelUsages(window: selectedWindow),
+                    try repo.fetchModelUsages(window: selectedWindow, limit: nil),
                     try repo.fetchSummary(window: selectedWindow),
                     try repo.fetchSummary(window: todayWindow),
                     try repo.fetchTrend(window: trendWindow),
                     try repo.fetchHeatmap(window: heatWindow)
                 )
             }.value
-            self.modelUsages = usages
+            self.allModelUsages = usages
+            applyModelUsageDisplaySettings()
             self.summary = summary
             self.todaySummary = todaySummary
             self.trend = trend
             self.heatmap = heat
-            await balance.refresh(models: usages.map(\.model), dbPath: settings.dbPath)
+            await balance.refresh(models: modelUsages.map(\.model), dbPath: settings.dbPath)
             await tokenPlan.refresh()
             self.loadError = nil
-            log.info("refreshAll finished models=\(usages.count) total=\(summary.total) trend=\(trend.count) heatmap=\(heat.count)")
+            log.info("refreshAll finished models=\(modelUsages.count)/\(usages.count) total=\(summary.total) trend=\(trend.count) heatmap=\(heat.count)")
         } catch {
             self.loadError = describe(error)
             log.error("refreshAll failed: \(error.localizedDescription)")
@@ -89,18 +93,19 @@ final class DataStore: ObservableObject {
             let (usages, summary) = try await Task.detached(priority: .userInitiated) {
                 let window = DateWindows.resolve(range, now: now, calendar: cal)
                 return (
-                    try repo.fetchModelUsages(window: window),
+                    try repo.fetchModelUsages(window: window, limit: nil),
                     try repo.fetchSummary(window: window)
                 )
             }.value
-            self.modelUsages = usages
+            self.allModelUsages = usages
+            applyModelUsageDisplaySettings()
             self.summary = summary
-            await balance.refresh(models: usages.map(\.model), dbPath: settings.dbPath)
+            await balance.refresh(models: modelUsages.map(\.model), dbPath: settings.dbPath)
             if range == .today {
                 self.todaySummary = summary
             }
             self.loadError = nil
-            log.info("refreshSelectedRange finished models=\(usages.count) total=\(summary.total)")
+            log.info("refreshSelectedRange finished models=\(modelUsages.count)/\(usages.count) total=\(summary.total)")
         } catch {
             self.loadError = describe(error)
             log.error("refreshSelectedRange failed: \(error.localizedDescription)")
@@ -132,5 +137,42 @@ final class DataStore: ObservableObject {
             return "未找到数据库或无法打开，请在设置中检查路径"
         }
         return "读取失败：\(error.localizedDescription)"
+    }
+
+    private func observeModelUsageDisplaySettings() {
+        settings.$modelUsageDisplayCount
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.applyModelUsageDisplaySettings() }
+            }
+            .store(in: &cancellables)
+
+        settings.$modelUsageSortMetric
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.applyModelUsageDisplaySettings() }
+            }
+            .store(in: &cancellables)
+
+        pricing.$pricing
+            .dropFirst()
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    guard let self, self.settings.modelUsageSortMetric == .cost else { return }
+                    self.applyModelUsageDisplaySettings()
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func applyModelUsageDisplaySettings() {
+        modelUsages = allModelUsages.topModels(
+            limit: settings.modelUsageDisplayCount,
+            sortMetric: settings.modelUsageSortMetric
+        ) { [pricing] model in
+            pricing.pricing(for: model)
+        }
     }
 }

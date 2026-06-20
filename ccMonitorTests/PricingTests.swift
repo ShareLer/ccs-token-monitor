@@ -42,6 +42,34 @@ final class PricingTests: XCTestCase {
         XCTAssertEqual(s.cacheRate, 0.6, accuracy: 0.0001)
     }
 
+    func test_modelUsageTopModels_sortsByConfiguredMetricAndLimit() {
+        let usages = [
+            ModelUsage(model: "cheap-large", input: 1_000, output: 1_000, cacheRead: 0, cacheCreate: 0, requestCount: 1),
+            ModelUsage(model: "expensive-small", input: 1, output: 1, cacheRead: 0, cacheCreate: 0, requestCount: 1),
+            ModelUsage(model: "many-requests", input: 1, output: 1, cacheRead: 0, cacheCreate: 0, requestCount: 99),
+        ]
+        let prices = [
+            "expensive-small": ModelPricing(input: 1_000_000, output: 1_000_000)
+        ]
+
+        let costTop = usages.topModels(limit: 1, sortMetric: .cost) { prices[$0] ?? ModelPricing() }
+        let requestTop = usages.topModels(limit: 1, sortMetric: .requestCount) { _ in ModelPricing() }
+
+        XCTAssertEqual(costTop.map(\.model), ["expensive-small"])
+        XCTAssertEqual(requestTop.map(\.model), ["many-requests"])
+    }
+
+    func test_modelUsageTopNInputMetricIncludesCacheCreate() {
+        let usages = [
+            ModelUsage(model: "input-only", input: 100, output: 0, cacheRead: 0, cacheCreate: 0),
+            ModelUsage(model: "cache-create", input: 1, output: 0, cacheRead: 0, cacheCreate: 120),
+        ]
+
+        let top = usages.topModels(limit: 1, sortMetric: .inputTokens) { _ in ModelPricing() }
+
+        XCTAssertEqual(top.map(\.model), ["cache-create"])
+    }
+
     func test_pricing_codable_roundtrip() throws {
         let p = ModelPricing(input: 3, output: 15, cacheRead: 0.3, cacheCreate: 3.75)
         let data = try JSONEncoder().encode(p)

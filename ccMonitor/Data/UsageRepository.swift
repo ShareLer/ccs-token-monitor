@@ -32,10 +32,12 @@ struct UsageRepository {
         return try body(db)
     }
 
-    /// ① 模型列表：给定窗口内按 model 聚合，按总用量降序取 Top5。
-    func fetchModelUsages(window: DateWindow, limit: Int = 5) throws -> [ModelUsage] {
+    /// ① 模型列表：给定窗口内按 model 聚合，默认按总用量降序取 Top5；limit 为 nil 时返回全量聚合结果。
+    func fetchModelUsages(window: DateWindow, limit: Int? = 5) throws -> [ModelUsage] {
         return try withDB { db in
             var usages: [ModelUsage] = []
+            let limitClause = limit == nil ? "" : " LIMIT ?"
+            let params = limit.map { [window.start, window.end, $0] } ?? [window.start, window.end]
             try db.query("""
                 SELECT model,
                        COALESCE(SUM(\(Self.normalizedInputSQL)),0),
@@ -48,8 +50,8 @@ struct UsageRepository {
                 WHERE created_at >= ? AND created_at < ?
                 GROUP BY model
                 ORDER BY total DESC, model ASC
-                LIMIT ?;
-            """, ints: [window.start, window.end, limit]) { row in
+                \(limitClause);
+            """, ints: params) { row in
                 usages.append(ModelUsage(model: row.string(0) ?? "",
                                          input: row.int(1),
                                          output: row.int(2),
