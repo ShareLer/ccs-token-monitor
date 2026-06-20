@@ -38,7 +38,7 @@ struct TimeRangeSelector: View {
             }
             return AnyShapeStyle(
                 LinearGradient(
-                    colors: [UB.Palette.accent, UB.Palette.accent.opacity(0.76)],
+                    colors: [UB.Glass.primary, UB.Glass.primary.opacity(0.78)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )

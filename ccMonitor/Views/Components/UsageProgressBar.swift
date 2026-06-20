@@ -57,8 +57,8 @@ struct UsageProgressBar: View {
             return AnyShapeStyle(
                 LinearGradient(
                     colors: [
-                        tint.opacity(colorScheme == .dark ? 0.70 : 0.78),
-                        tint.opacity(colorScheme == .dark ? 0.48 : 0.58),
+                        tint.opacity(colorScheme == .dark ? 0.88 : 0.94),
+                        tint.opacity(colorScheme == .dark ? 0.68 : 0.76),
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

@@ -4,6 +4,7 @@ import SwiftUI
 struct TrendChartView: View {
     let points: [TrendPoint]
     var displayMode: TrendChartDisplayMode = .bar
+    @Environment(\.appBackgroundStyle) private var appBackgroundStyle
 
     // MARK: 数据整形
 
@@ -37,7 +38,7 @@ struct TrendChartView: View {
             perModel[p.model]?[i] += p.total
         }
         return models.enumerated().map { idx, m in
-            Segment(name: m, color: UB.Palette.softSeriesColor(idx), values: perModel[m] ?? [])
+            Segment(name: m, color: seriesColor(idx), values: perModel[m] ?? [])
         }
     }
 
@@ -67,7 +68,17 @@ struct TrendChartView: View {
         let totalValues = (0..<days.count).map { i in
             segments.reduce(0) { $0 + ($1.values[safe: i] ?? 0) }
         }
-        return modelSeries + [(name: "总计", color: UB.Palette.accent, values: totalValues)]
+        return modelSeries + [(name: "总计", color: trendAccent, values: totalValues)]
+    }
+
+    private var trendAccent: Color {
+        appBackgroundStyle == .glass ? UB.Glass.primary : UB.Palette.accent
+    }
+
+    private func seriesColor(_ index: Int) -> Color {
+        appBackgroundStyle == .glass
+            ? UB.Palette.glassSeriesColor(index)
+            : UB.Palette.softSeriesColor(index)
     }
 }
 
@@ -266,10 +277,10 @@ private struct StackedBarPlot: View {
 
     private func segmentFill(_ color: Color, highlighted: Bool) -> AnyShapeStyle {
         if appBackgroundStyle == .glass {
-            let opacity = highlighted ? 0.82 : 0.62
+            let opacity = highlighted ? 0.96 : 0.78
             return AnyShapeStyle(
                 LinearGradient(
-                    colors: [color.opacity(opacity), color.opacity(max(opacity - 0.16, 0.35))],
+                    colors: [color.opacity(opacity), color.opacity(max(opacity - 0.14, 0.50))],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -396,11 +407,11 @@ private struct LineTrendPlot: View {
                 if points.count >= 2 {
                     if series[si].name != "总计" {
                         fillPath(points: points, plot: plot)
-                            .fill(series[si].color.opacity(appBackgroundStyle == .glass ? 0.04 : 0.06))
+                            .fill(series[si].color.opacity(appBackgroundStyle == .glass ? 0.08 : 0.06))
                     }
                     smoothPath(points: points)
                         .stroke(
-                            series[si].color.opacity(appBackgroundStyle == .glass ? 0.86 : 1),
+                            series[si].color.opacity(appBackgroundStyle == .glass ? 0.96 : 1),
                             style: StrokeStyle(
                                 lineWidth: series[si].name == "总计" ? 2.2 : 1.5,
                                 lineCap: .round,
@@ -429,7 +440,7 @@ private struct LineTrendPlot: View {
         } else {
             modelSeries = series
             totalValue = series.reduce(0) { $0 + ($1.values[safe: index] ?? 0) }
-            totalColor = UB.Palette.accent
+            totalColor = appBackgroundStyle == .glass ? UB.Glass.primary : UB.Palette.accent
         }
         var modelRows: [TooltipRow] = []
         for item in modelSeries {

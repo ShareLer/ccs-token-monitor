@@ -56,21 +56,11 @@ struct HeatmapView: View {
     }
 
     private func color(_ lvl: Int) -> Color {
-        if appBackgroundStyle == .glass {
-            switch min(max(lvl, 0), 4) {
-            case 0:
-                return UB.Glass.controlFill(for: colorScheme)
-            case 1:
-                return Color(hex: 0x66B8FF).opacity(colorScheme == .dark ? 0.30 : 0.38)
-            case 2:
-                return Color(hex: 0x39D0C8).opacity(colorScheme == .dark ? 0.42 : 0.52)
-            case 3:
-                return Color(hex: 0x42C86F).opacity(colorScheme == .dark ? 0.58 : 0.68)
-            default:
-                return Color(hex: 0xB8F26A).opacity(colorScheme == .dark ? 0.78 : 0.86)
-            }
+        let level = min(max(lvl, 0), heatmapPalette.count - 1)
+        if appBackgroundStyle == .glass, level == 0 {
+            return UB.Glass.controlFill(for: colorScheme)
         }
-        return heatmapPalette[min(max(lvl, 0), heatmapPalette.count - 1)]
+        return heatmapPalette[level]
     }
 
     private var heatmapPalette: [Color] {

@@ -246,11 +246,11 @@ private struct TokenPlanProgressBar: View {
     }
 
     private var fillStyle: AnyShapeStyle {
-        let opacity = isPlaceholder ? 0.24 : (colorScheme == .dark ? 0.68 : 0.76)
+        let opacity = isPlaceholder ? 0.32 : (colorScheme == .dark ? 0.84 : 0.90)
         if appBackgroundStyle == .glass {
             return AnyShapeStyle(
                 LinearGradient(
-                    colors: [color.opacity(opacity), color.opacity(max(opacity - 0.18, 0.18))],
+                    colors: [color.opacity(opacity), color.opacity(max(opacity - 0.16, 0.28))],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )

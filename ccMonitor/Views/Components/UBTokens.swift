@@ -97,6 +97,11 @@ enum UB {
     }
 
     enum Glass {
+        static let primary = Color(hex: 0x2196F3)
+        static let chartBlue = Color(hex: 0x5B8FF9)
+        static let positive = Color(hex: 0x2FA36F)
+        static let warning = Color(hex: 0xF59E0B)
+
         static func canvasTint(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
                 ? Color.black.opacity(0.06)
@@ -117,8 +122,8 @@ enum UB {
 
         static func controlFill(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark
-                ? Color.white.opacity(0.09)
-                : Color.white.opacity(0.15)
+                ? Color.white.opacity(0.15)
+                : Color.gray.opacity(0.18)
         }
 
         static func border(for colorScheme: ColorScheme) -> Color {
@@ -142,6 +147,7 @@ enum UB {
                 ? Color.black.opacity(0.66)
                 : Color.black.opacity(0.76)
         }
+
     }
 
     enum Palette {
@@ -192,6 +198,23 @@ enum UB {
             if i < softSeries.count { return softSeries[i] }
             let hue = Double((i - softSeries.count) % 24) / 24.0
             return Color(hue: hue, saturation: 0.5, brightness: 0.85)
+        }
+
+        /// 玻璃模式下的图表色：沿用项目主蓝，辅以更饱和的少量辅助色。
+        static let glassSeries: [Color] = [
+            UB.Glass.primary,
+            UB.Glass.positive,
+            UB.Glass.warning,
+            UB.Glass.chartBlue,
+            Color(hex: 0x8B5CF6),
+            Color(hex: 0xEC4899),
+            Color(hex: 0x14B8A6),
+            Color(hex: 0xEF4444),
+        ]
+        static func glassSeriesColor(_ i: Int) -> Color {
+            if i < glassSeries.count { return glassSeries[i] }
+            let hue = Double((i - glassSeries.count) % 18) / 18.0
+            return Color(hue: hue, saturation: 0.72, brightness: 0.90)
         }
     }
 }
