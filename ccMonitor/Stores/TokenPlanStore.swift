@@ -5,6 +5,7 @@ import Combine
 final class TokenPlanStore: ObservableObject {
     private let defaults: UserDefaults
     private let fetchQuota: @Sendable (TokenPlanConfig) async throws -> TokenPlanQuota
+    private let log = AppLog("TokenPlan")
 
     private enum Keys {
         static let config = "tokenPlanConfig"
@@ -58,10 +59,12 @@ final class TokenPlanStore: ObservableObject {
                 return lhsIndex < rhsIndex
             }
         }
+        log.info("config updated id=\(config.id.rawValue) enabled=\(config.enabled) configured=\(config.isConfigured)")
     }
 
     func refresh() async {
         let active = activeConfigs
+        log.info("refresh started active=\(active.map(\.id.rawValue).joined(separator: ","))")
         let inactiveIDs = Set(TokenPlanConfigID.allCases).subtracting(active.map(\.id))
         for id in inactiveIDs {
             quotas[id] = nil
@@ -92,8 +95,10 @@ final class TokenPlanStore: ObservableObject {
                 case .success(let quota):
                     quotas[id] = quota
                     states[id] = .loaded
+                    log.info("refresh loaded id=\(id.rawValue) tiers=\(quota.tiers.count)")
                 case .failure(let error):
                     states[id] = .failed(error.localizedDescription)
+                    log.error("refresh failed id=\(id.rawValue): \(error.localizedDescription)")
                 }
             }
         }

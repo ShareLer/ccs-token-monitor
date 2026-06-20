@@ -2,6 +2,7 @@ import Foundation
 
 enum TokenPlanService {
     private static let timeout: TimeInterval = 15
+    private static let log = AppLog("TokenPlanService")
 
     static func fetch(config: TokenPlanConfig) async throws -> TokenPlanQuota {
         let baseUrl = config.trimmedBaseUrl
@@ -17,12 +18,16 @@ enum TokenPlanService {
 
         switch provider {
         case .kimi:
+            log.info("fetch Kimi quota")
             return try await queryKimi(apiKey: apiKey)
         case .zhipuCn, .zhipuEn:
+            log.info("fetch Zhipu quota provider=\(provider.rawValue)")
             return try await queryZhipu(baseUrl: baseUrl, apiKey: apiKey, provider: provider)
         case .minimaxCn:
+            log.info("fetch MiniMax CN quota")
             return try await queryMiniMax(apiKey: apiKey, isCN: true)
         case .minimaxEn:
+            log.info("fetch MiniMax EN quota")
             return try await queryMiniMax(apiKey: apiKey, isCN: false)
         }
     }
@@ -211,22 +216,28 @@ enum TokenPlanService {
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
+            log.error("request failed: \(error.localizedDescription)")
             throw TokenPlanError.network(error.localizedDescription)
         }
 
         guard let http = response as? HTTPURLResponse else {
+            log.error("request failed: non-http response")
             throw TokenPlanError.api("响应格式异常")
         }
         if http.statusCode == 401 || http.statusCode == 403 {
+            log.error("request authentication failed status=\(http.statusCode)")
             throw TokenPlanError.authentication("HTTP \(http.statusCode)")
         }
         guard (200..<300).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? ""
+            log.error("request failed status=\(http.statusCode)")
             throw TokenPlanError.api("HTTP \(http.statusCode) \(body)")
         }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            log.error("request failed: json parse error")
             throw TokenPlanError.parse("无法解析响应")
         }
+        log.info("request succeeded status=\(http.statusCode)")
         return json
     }
 

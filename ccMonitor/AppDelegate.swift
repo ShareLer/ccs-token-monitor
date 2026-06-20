@@ -19,12 +19,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let dashboardSizing = DashboardSizing()
     private var settingsWindow: NSWindow?
     private var cancellables = Set<AnyCancellable>()
+    private let log = AppLog("App")
 
     deinit {
         DistributedNotificationCenter.default().removeObserver(self)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        log.info("applicationDidFinishLaunching")
         let settings = SettingsStore()
         let pricing = PricingStore()
         let balance = BalanceStore()
@@ -61,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] _ in
+                self?.log.info("refresh interval changed")
                 self?.store.startTimer()
             }
             .store(in: &cancellables)
@@ -108,14 +111,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func systemAppearanceDidChange() {
+        log.info("system appearance changed")
         store.settings.refreshSystemAppearance()
     }
 
     @objc private func togglePopover(_ sender: Any?) {
         guard let button = statusItem.button else { return }
         if popover.isShown {
+            log.info("close popover")
             popover.performClose(sender)
         } else {
+            log.info("show popover")
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
@@ -124,6 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 打开（或前置）独立设置窗口。独立 NSWindow 可成为前台 key window，
     /// NSOpenPanel 依附其上即可正常置顶，不受 transient popover 影响。
     @objc private func openSettings() {
+        log.info("open settings")
         popover.performClose(nil)   // 关掉 popover，避免抢焦点
 
         if let win = settingsWindow {

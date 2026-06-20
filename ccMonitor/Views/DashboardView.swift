@@ -31,6 +31,7 @@ struct DashboardView: View {
     @State private var expandedModelIDs: Set<String> = []
     @State private var headerHeight: CGFloat = 0
     @State private var contentHeight: CGFloat = 0
+    private let log = AppLog("Dashboard")
 
     /// 截图结果提示。
     private enum ScreenshotAlert: Identifiable {
@@ -170,7 +171,11 @@ struct DashboardView: View {
     /// 截图：渲染完整内容长图保存到设置目录。未设目录则提醒。
     private func takeScreenshot() {
         let dir = settings.screenshotDir
-        guard !dir.isEmpty else { screenshotAlert = .needsDir; return }
+        guard !dir.isEmpty else {
+            log.warning("screenshot skipped: directory not set")
+            screenshotAlert = .needsDir
+            return
+        }
 
         let snapshot = SnapshotView(
             modelUsages: store.modelUsages,
@@ -191,8 +196,10 @@ struct DashboardView: View {
         )
         do {
             let url = try Screenshotter.save(snapshot, toDirectory: dir)
+            log.info("screenshot saved: \(url.path)")
             screenshotAlert = .saved(url.lastPathComponent)
         } catch {
+            log.error("screenshot failed: \(error.localizedDescription)")
             screenshotAlert = .failed(error.localizedDescription)
         }
     }

@@ -1,3 +1,4 @@
+import ServiceManagement
 import SwiftUI
 
 /// ⑤ 设置面板：左右分栏。左侧分类导航，右侧对应内容。
@@ -9,25 +10,31 @@ struct SettingsView: View {
     let onSaved: () -> Void
 
     enum Section: String, CaseIterable, Identifiable {
-        case basic = "基础设置"
+        case dataSource = "数据来源"
+        case display = "显示与行为"
         case pricing = "模型价格"
         case balance = "余额逻辑"
         case tokenPlan = "Token Plan"
+        case diagnostics = "诊断"
         var id: String { rawValue }
         var icon: String {
             switch self {
-            case .basic: return "slider.horizontal.3"
+            case .dataSource: return "externaldrive"
+            case .display: return "slider.horizontal.3"
             case .pricing: return "dollarsign.circle"
             case .balance: return "creditcard"
             case .tokenPlan: return "chart.pie"
+            case .diagnostics: return "stethoscope"
             }
         }
     }
 
-    @State private var section: Section = .basic
+    @State private var section: Section = .dataSource
     @State private var models: [String] = []
     @State private var loadError: String?
     @State private var editingRule: BalanceRule?
+    @State private var launchAtLogin = false
+    @State private var launchAtLoginError: String?
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -39,7 +46,11 @@ struct SettingsView: View {
         .environment(\.appBackgroundStyle, settings.backgroundStyle)
         .appBackground(settings.backgroundStyle)
         .preferredColorScheme(settings.appearanceMode.preferredColorScheme(systemIsDark: settings.systemAppearanceIsDark))
-        .onAppear(perform: loadModels)
+        .onAppear {
+            loadModels()
+            refreshLaunchAtLoginState()
+            AppLog("Settings").info("opened")
+        }
     }
 
     // MARK: 左侧导航
@@ -83,8 +94,9 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: UB.Spacing.xl) {
                     switch section {
-                    case .basic:
+                    case .dataSource:
                         dataSourceSection
+                    case .display:
                         generalSection
                     case .pricing:
                         pricingSection
@@ -92,6 +104,8 @@ struct SettingsView: View {
                         balanceSection
                     case .tokenPlan:
                         tokenPlanSection
+                    case .diagnostics:
+                        diagnosticsSection
                     }
                 }
                 .padding(UB.Spacing.xxl)
@@ -176,6 +190,16 @@ struct SettingsView: View {
                 .pickerStyle(.segmented).labelsHidden()
             }
             VStack(alignment: .leading, spacing: UB.Spacing.m) {
+                sectionHeader("开机启动")
+                Toggle("登录 macOS 后自动启动", isOn: launchAtLoginBinding)
+                    .toggleStyle(.switch)
+                if let launchAtLoginError {
+                    Label(launchAtLoginError, systemImage: "exclamationmark.triangle")
+                        .font(UB.Font.caption)
+                        .foregroundColor(.red)
+                }
+            }
+            VStack(alignment: .leading, spacing: UB.Spacing.m) {
                 sectionHeader("外观")
                 Picker("", selection: $settings.appearanceMode) {
                     ForEach(AppAppearanceMode.allCases) { mode in
@@ -209,6 +233,35 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented).labelsHidden()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ubCard()
+    }
+
+    private var diagnosticsSection: some View {
+        VStack(alignment: .leading, spacing: UB.Spacing.xl) {
+            sectionHeader("运行日志", "刷新、数据库读取、余额和 Token Plan 查询失败会写入本地日志")
+            VStack(alignment: .leading, spacing: UB.Spacing.s) {
+                Text(AppLog.fileURL.path)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                HStack(spacing: UB.Spacing.m) {
+                    Button {
+                        AppLog("Settings").info("open log file")
+                        NSWorkspace.shared.open(AppLog.fileURL)
+                    } label: {
+                        Label("打开日志", systemImage: "doc.text")
+                    }
+                    Button {
+                        AppLog("Settings").info("reveal log file")
+                        NSWorkspace.shared.activateFileViewerSelecting([AppLog.fileURL])
+                    } label: {
+                        Label("在 Finder 中显示", systemImage: "folder")
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -531,6 +584,35 @@ struct SettingsView: View {
         )
     }
 
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { launchAtLogin },
+            set: { enabled in setLaunchAtLogin(enabled) }
+        )
+    }
+
+    private func refreshLaunchAtLoginState() {
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+    }
+
+    private func setLaunchAtLogin(_ enabled: Bool) {
+        launchAtLoginError = nil
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+                AppLog("Settings").info("launch at login enabled")
+            } else {
+                try SMAppService.mainApp.unregister()
+                AppLog("Settings").info("launch at login disabled")
+            }
+            refreshLaunchAtLoginState()
+        } catch {
+            launchAtLoginError = error.localizedDescription
+            refreshLaunchAtLoginState()
+            AppLog("Settings").error("launch at login update failed: \(error.localizedDescription)")
+        }
+    }
+
     private func forEachPriceLabel() -> some View {
         HStack(spacing: UB.Spacing.s) {
             ForEach(["输入", "输出", "缓存读", "缓存写"], id: \.self) { t in
@@ -589,9 +671,11 @@ struct SettingsView: View {
         do {
             models = try UsageRepository(dbPath: settings.dbPath).fetchDistinctModels()
             loadError = nil
+            AppLog("Settings").info("loaded \(models.count) models from \(settings.dbPath)")
         } catch {
             models = []
             loadError = "无法读取模型列表，请检查数据库路径"
+            AppLog("Settings").error("load models failed: \(error.localizedDescription)")
         }
     }
 

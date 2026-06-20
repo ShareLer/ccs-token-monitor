@@ -21,6 +21,7 @@ final class BalanceStore: ObservableObject {
 
     @Published private(set) var ruleBalances: [String: ModelBalance] = [:]
     private let fetchBalance: @Sendable (BalanceRule, String, String) async -> ModelBalance
+    private let log = AppLog("Balance")
 
     init(defaults: UserDefaults = .standard,
          fetchBalance: @escaping @Sendable (BalanceRule, String, String) async -> ModelBalance = { rule, model, dbPath in
@@ -75,6 +76,7 @@ final class BalanceStore: ObservableObject {
         } else {
             rules.append(rule)
         }
+        log.info("rule saved id=\(rule.id) kind=\(rule.kind.rawValue)")
     }
 
     func deleteRule(id: String) {
@@ -82,6 +84,7 @@ final class BalanceStore: ObservableObject {
         rules.removeAll { $0.id == id }
         ruleBalances.removeValue(forKey: id)
         modelRuleIDs = modelRuleIDs.filter { $0.value != id }
+        log.info("rule deleted id=\(id)")
     }
 
     func assign(ruleID: String?, to model: String) {
@@ -90,11 +93,13 @@ final class BalanceStore: ObservableObject {
         } else {
             modelRuleIDs.removeValue(forKey: model)
         }
+        log.info("model assignment updated model=\(model) rule=\(ruleID ?? "auto")")
     }
 
     func refresh(models: [String], dbPath: String) async {
         let uniqueModels = Array(Set(models))
         guard !uniqueModels.isEmpty else { return }
+        log.info("refresh started models=\(uniqueModels.count)")
 
         var ruleRequests: [String: (rule: BalanceRule, models: [String])] = [:]
 
@@ -121,6 +126,7 @@ final class BalanceStore: ObservableObject {
             for await results in group {
                 for (ruleID, balance) in results {
                     ruleBalances[ruleID] = balance
+                    log.info("refresh finished rule=\(ruleID) state=\(balance.state.logName)")
                 }
             }
         }
@@ -135,6 +141,7 @@ final class BalanceStore: ObservableObject {
         ruleBalances[ruleID] = ModelBalance(state: .loading, updatedAt: ruleBalances[ruleID]?.updatedAt)
         let result = await fetchBalance(rule, rule.name, dbPath)
         ruleBalances[ruleID] = result
+        log.info("refresh single rule=\(ruleID) state=\(result.state.logName)")
     }
 
     private static func ensureBuiltins(in rules: [BalanceRule]) -> [BalanceRule] {
@@ -153,6 +160,17 @@ final class BalanceStore: ObservableObject {
     private func persistModelRuleIDs() {
         if let data = try? JSONEncoder().encode(modelRuleIDs) {
             defaults.set(data, forKey: Keys.modelRuleIDs)
+        }
+    }
+}
+
+private extension ModelBalance.State {
+    var logName: String {
+        switch self {
+        case .idle: return "idle"
+        case .loading: return "loading"
+        case .value: return "value"
+        case .failed: return "failed"
         }
     }
 }

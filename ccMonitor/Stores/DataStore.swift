@@ -21,6 +21,7 @@ final class DataStore: ObservableObject {
     let pricing: PricingStore
     let balance: BalanceStore
     let tokenPlan: TokenPlanStore
+    private let log = AppLog("DataStore")
     private var timer: Timer?
 
     init(settings: SettingsStore, pricing: PricingStore, balance: BalanceStore, tokenPlan: TokenPlanStore) {
@@ -34,6 +35,7 @@ final class DataStore: ObservableObject {
 
     /// 全量刷新（模型列表 + 汇总 + 趋势 + 热力图）。
     func refreshAll() async {
+        log.info("refreshAll started range=\(selectedRange) db=\(settings.dbPath)")
         isLoading = true
         defer { isLoading = false }
         let repo = self.repo
@@ -63,8 +65,10 @@ final class DataStore: ObservableObject {
             await balance.refresh(models: usages.map(\.model), dbPath: settings.dbPath)
             await tokenPlan.refresh()
             self.loadError = nil
+            log.info("refreshAll finished models=\(usages.count) total=\(summary.total) trend=\(trend.count) heatmap=\(heat.count)")
         } catch {
             self.loadError = describe(error)
+            log.error("refreshAll failed: \(error.localizedDescription)")
             await tokenPlan.refresh()
         }
         // 无论成功失败，刷新完成即重启定时器，使倒计时与下次自动刷新对齐
@@ -76,6 +80,7 @@ final class DataStore: ObservableObject {
 
     /// 刷新跟随顶部时间范围的区块（模型明细 + 汇总）。
     func refreshSelectedRange() async {
+        log.info("refreshSelectedRange started range=\(selectedRange)")
         let repo = self.repo
         let range = self.selectedRange
         let now = Date()
@@ -95,21 +100,27 @@ final class DataStore: ObservableObject {
                 self.todaySummary = summary
             }
             self.loadError = nil
+            log.info("refreshSelectedRange finished models=\(usages.count) total=\(summary.total)")
         } catch {
             self.loadError = describe(error)
+            log.error("refreshSelectedRange failed: \(error.localizedDescription)")
         }
     }
 
     func startTimer() {
         timer?.invalidate()
         let interval = TimeInterval(settings.refreshIntervalMinutes * 60)
+        log.info("startTimer intervalSeconds=\(Int(interval))")
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { await self?.refreshAll() }
         }
         scheduleNext()
     }
 
-    func stopTimer() { timer?.invalidate(); timer = nil; nextRefreshAt = nil }
+    func stopTimer() {
+        log.info("stopTimer")
+        timer?.invalidate(); timer = nil; nextRefreshAt = nil
+    }
 
     /// 重置倒计时目标为 now + 刷新间隔。
     private func scheduleNext() {
