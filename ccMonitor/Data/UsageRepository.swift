@@ -22,7 +22,10 @@ struct UsageRepository {
 
     private static var displayTotalSQL: String {
         """
-        \(Self.normalizedInputSQL) + output_tokens + cache_read_tokens + cache_creation_tokens
+        COALESCE((\(Self.normalizedInputSQL)), 0)
+          + COALESCE(output_tokens, 0)
+          + COALESCE(cache_read_tokens, 0)
+          + COALESCE(cache_creation_tokens, 0)
         """
     }
 

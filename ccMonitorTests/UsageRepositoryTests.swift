@@ -266,6 +266,30 @@ final class UsageRepositoryTests: XCTestCase {
         XCTAssertEqual(s.requestCount, 2)
     }
 
+    func test_fetchSummary_treatsNullTokenColumnsAsZeroInTotal() throws {
+        let path = try makeTempDB(rows: [UsageRow]())
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        let db = try SQLiteDatabase(path: path, readonly: false)
+        try db.exec("""
+            INSERT INTO proxy_request_logs
+            (request_id, provider_id, app_type, model, request_model, input_tokens, output_tokens,
+             cache_read_tokens, cache_creation_tokens, total_cost_usd, latency_ms,
+             status_code, created_at, data_source, pricing_model)
+            VALUES ('r','_session','claude','m', 'm', NULL, 20, 30, 40,
+                    '0', 0, 200, 1000, 'session_log', NULL);
+        """)
+        db.close()
+
+        let repo = UsageRepository(dbPath: path)
+        let s = try repo.fetchSummary(window: DateWindow(start: 0, end: 2000))
+
+        XCTAssertEqual(s.input, 0)
+        XCTAssertEqual(s.output, 20)
+        XCTAssertEqual(s.cacheRead, 30)
+        XCTAssertEqual(s.cacheCreate, 40)
+        XCTAssertEqual(s.total, 90)
+    }
+
     func test_fetchSummary_appliesModelSpecificTotalSemantics() throws {
         let path = try makeTempDB(rows: [
             UsageRow(

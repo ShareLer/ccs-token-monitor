@@ -58,8 +58,13 @@ final class SQLiteDatabase {
         for (idx, v) in ints.enumerated() {
             sqlite3_bind_int64(stmt, Int32(idx + 1), Int64(v))
         }
-        while sqlite3_step(stmt) == SQLITE_ROW {
+        var rc = sqlite3_step(stmt)
+        while rc == SQLITE_ROW {
             rowHandler(SQLiteRow(stmt: stmt!))
+            rc = sqlite3_step(stmt)
+        }
+        guard rc == SQLITE_DONE else {
+            throw SQLiteError.execFailed(String(cString: sqlite3_errmsg(db)))
         }
     }
 

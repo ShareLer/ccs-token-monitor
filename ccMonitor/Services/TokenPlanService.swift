@@ -39,7 +39,7 @@ enum TokenPlanService {
 
         for item in arrayOfDicts(body["limits"]) {
             guard let detail = dict(item["detail"]) else { continue }
-            let limit = numeric(detail["limit"]) ?? 1
+            let limit = numeric(detail["limit"]) ?? 0
             let remaining = numeric(detail["remaining"]) ?? 0
             let utilization = utilization(limit: limit, remaining: remaining)
             tiers.append(TokenPlanTier(kind: .fiveHour,
@@ -51,7 +51,7 @@ enum TokenPlanService {
         }
 
         if let usage = dict(body["usage"]) {
-            let limit = numeric(usage["limit"]) ?? 1
+            let limit = numeric(usage["limit"]) ?? 0
             let remaining = numeric(usage["remaining"]) ?? 0
             tiers.append(TokenPlanTier(kind: .weekly,
                                        utilization: utilization(limit: limit, remaining: remaining),

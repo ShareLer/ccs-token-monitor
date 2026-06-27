@@ -23,6 +23,18 @@ final class TokenPlanTests: XCTestCase {
         XCTAssertEqual(quota.tier(for: .weekly)?.utilization ?? -1, 60, accuracy: 0.0001)
     }
 
+    func test_parseKimiQuota_missingLimitDoesNotReportExhausted() {
+        let quota = TokenPlanService.parseKimiQuota([
+            "limits": [
+                ["detail": ["remaining": 0]]
+            ],
+            "usage": ["remaining": 0]
+        ])
+
+        XCTAssertEqual(quota.tier(for: .fiveHour)?.utilization ?? -1, 0, accuracy: 0.0001)
+        XCTAssertEqual(quota.tier(for: .weekly)?.utilization ?? -1, 0, accuracy: 0.0001)
+    }
+
     func test_parseZhipuTokenTiers_unitOverridesResetOrder() {
         let tiers = TokenPlanService.parseZhipuTokenTiers([
             "limits": [

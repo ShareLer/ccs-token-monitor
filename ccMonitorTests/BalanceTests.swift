@@ -57,6 +57,18 @@ final class BalanceTests: XCTestCase {
         XCTAssertEqual(parsed.1, "USD")
     }
 
+    func test_parseBalanceValue_rejectsExplicitInvalidState() {
+        XCTAssertThrowsError(try BalanceService.parseBalanceValue([
+            "isValid": false,
+            "remaining": 12.3,
+            "unit": "USD"
+        ])) { error in
+            guard case BalanceExecutionError.api = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
     func test_deepSeekCredentialResolver_parsesClaudeProviderConfig() {
         let config = """
         {

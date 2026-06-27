@@ -91,6 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .openSettings, object: nil)
 
         store.startTimer()
+        Task { await store.refreshAll() }
     }
 
     private func applyAppearance(_ mode: AppAppearanceMode, systemIsDark: Bool) {

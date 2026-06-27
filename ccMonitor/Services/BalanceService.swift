@@ -29,6 +29,10 @@ enum BalanceService {
     }
 
     static func parseBalanceValue(_ output: [String: Any]) throws -> (Double, String) {
+        if optionalBoolField(output["isValid"] ?? output["is_active"]) == false {
+            throw BalanceExecutionError.api("余额状态无效")
+        }
+
         let amountValue = output["remaining"] ?? output["amount"] ?? output["balance"]
         guard let amount = try optionalNumericField(amountValue) else {
             throw BalanceExecutionError.invalidAmount(String(describing: output))
@@ -269,6 +273,23 @@ enum BalanceService {
         if let value = value as? Int { return Double(value) }
         if let value = value as? String, let parsed = Double(value.trimmingCharacters(in: .whitespacesAndNewlines)) {
             return parsed
+        }
+        return nil
+    }
+
+    private static func optionalBoolField(_ value: Any?) -> Bool? {
+        guard let value, !(value is NSNull) else { return nil }
+        if let value = value as? Bool { return value }
+        if let value = value as? NSNumber { return value.boolValue }
+        if let value = value as? String {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "true", "1", "yes":
+                return true
+            case "false", "0", "no":
+                return false
+            default:
+                return nil
+            }
         }
         return nil
     }

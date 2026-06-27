@@ -113,13 +113,20 @@ private struct StackedBarPlot: View {
                 yLabels(plot)
                 xLabels(plot)
                 bars(plot)
-                if let hoverIdx { hoverOverlay(index: hoverIdx, plot: plot, size: geo.size) }
+                if let hoverIdx, hoverIdx < days.count {
+                    hoverOverlay(index: hoverIdx, plot: plot, size: geo.size)
+                }
             }
             .contentShape(Rectangle())
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let loc): hoverIdx = barIndex(at: loc.x, plot: plot)
                 case .ended: hoverIdx = nil
+                }
+            }
+            .onChange(of: days.count) { count in
+                if let hoverIdx, hoverIdx >= count {
+                    self.hoverIdx = nil
                 }
             }
         }
@@ -317,7 +324,6 @@ private struct LineTrendPlot: View {
     private let topPad: CGFloat = 10
     private let bottomPad: CGFloat = 22
     private let yTicks = 3
-    private let maxTooltipModelRows = 6
 
     private struct TooltipRow {
         let name: String
@@ -340,13 +346,20 @@ private struct LineTrendPlot: View {
                 yLabels(plot)
                 xLabels(plot)
                 lines(plot)
-                if let hoverIdx { hoverOverlay(index: hoverIdx, plot: plot, size: geo.size) }
+                if let hoverIdx, hoverIdx < days.count {
+                    hoverOverlay(index: hoverIdx, plot: plot, size: geo.size)
+                }
             }
             .contentShape(Rectangle())
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let loc): hoverIdx = nearestDay(at: loc.x, plot: plot)
                 case .ended: hoverIdx = nil
+                }
+            }
+            .onChange(of: days.count) { count in
+                if let hoverIdx, hoverIdx >= count {
+                    self.hoverIdx = nil
                 }
             }
         }
@@ -452,9 +465,6 @@ private struct LineTrendPlot: View {
         modelRows.sort { lhs, rhs in
             lhs.value == rhs.value ? lhs.name < rhs.name : lhs.value > rhs.value
         }
-        let visibleRows = Array(modelRows.prefix(maxTooltipModelRows))
-        let hiddenRows = modelRows.dropFirst(maxTooltipModelRows)
-        let hiddenTotal = hiddenRows.reduce(0) { $0 + $1.value }
         let tipMaxW = max(size.width - 16, 120)
         let onLeft = x > size.width / 2
         return ZStack(alignment: .topLeading) {
@@ -481,27 +491,18 @@ private struct LineTrendPlot: View {
                     Text(formatTokens(totalValue)).font(.system(size: 10, weight: .bold))
                         .foregroundColor(.white).monospacedDigit()
                 }
-                if visibleRows.isEmpty {
+                if modelRows.isEmpty {
                     Text("无模型用量").font(.system(size: 10)).foregroundColor(.white.opacity(0.65))
                 } else {
                     Divider().overlay(Color.white.opacity(0.16))
                 }
-                ForEach(visibleRows.indices, id: \.self) { ri in
+                ForEach(modelRows.indices, id: \.self) { ri in
                     HStack(alignment: .top, spacing: 5) {
-                        Circle().fill(visibleRows[ri].color).frame(width: 6, height: 6).padding(.top, 2)
-                        Text(visibleRows[ri].name).font(.system(size: 10)).foregroundColor(.white.opacity(0.85))
+                        Circle().fill(modelRows[ri].color).frame(width: 6, height: 6).padding(.top, 2)
+                        Text(modelRows[ri].name).font(.system(size: 10)).foregroundColor(.white.opacity(0.85))
                             .lineLimit(1).truncationMode(.middle)
                         Spacer(minLength: 8)
-                        Text(formatTokens(visibleRows[ri].value)).font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white).monospacedDigit()
-                    }
-                }
-                if !hiddenRows.isEmpty {
-                    HStack(alignment: .top, spacing: 5) {
-                        Circle().fill(Color.white.opacity(0.45)).frame(width: 6, height: 6).padding(.top, 2)
-                        Text("其他 \(hiddenRows.count) 个模型").font(.system(size: 10)).foregroundColor(.white.opacity(0.75))
-                        Spacer(minLength: 8)
-                        Text(formatTokens(hiddenTotal)).font(.system(size: 10, weight: .medium))
+                        Text(formatTokens(modelRows[ri].value)).font(.system(size: 10, weight: .medium))
                             .foregroundColor(.white).monospacedDigit()
                     }
                 }
