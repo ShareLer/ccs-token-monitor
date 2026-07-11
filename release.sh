@@ -280,10 +280,20 @@ verify_prepared_release() {
   RELEASE_MANIFEST_PATH="$manifest_path"
 }
 
+release_id_for_tag() {
+  local tag="$1"
+  gh api --paginate "repos/$REPO/releases?per_page=100" \
+    --jq ".[] | select(.tag_name == \"$tag\") | .id"
+}
+
 remote_asset_digest() {
   local tag="$1"
   local asset_name="$2"
-  gh api "repos/$REPO/releases/tags/$tag" \
+  local release_id
+
+  release_id="$(release_id_for_tag "$tag")"
+  [[ -n "$release_id" ]] || return 1
+  gh api "repos/$REPO/releases/$release_id" \
     --jq ".assets[] | select(.name == \"$asset_name\") | .digest"
 }
 
@@ -310,7 +320,7 @@ publish_release() {
   local prerelease="$3"
   local branch head_commit origin_url push_url remote_branch_line remote_commit
   local local_tag_exists remote_tag_exists remote_tag remote_check_ref existing_release release_draft
-  local expected_asset_names remote_asset_names
+  local release_id expected_asset_names remote_asset_names
   local title="$APP_NAME $tag"
   local -a assets create_args edit_args
 
@@ -413,7 +423,9 @@ publish_release() {
     "$(basename "$RELEASE_ZIP_PATH")" \
     "$(basename "$RELEASE_SHA_PATH")" \
     "$(basename "$RELEASE_MANIFEST_PATH")" | LC_ALL=C sort)"
-  remote_asset_names="$(gh api "repos/$REPO/releases/tags/$tag" --jq '.assets[].name' | LC_ALL=C sort)"
+  release_id="$(release_id_for_tag "$tag")"
+  [[ -n "$release_id" ]] || die "draft Release disappeared during asset verification"
+  remote_asset_names="$(gh api "repos/$REPO/releases/$release_id" --jq '.assets[].name' | LC_ALL=C sort)"
   [[ "$remote_asset_names" == "$expected_asset_names" ]] || die "draft Release contains unexpected or missing assets"
 
   edit_args=(
