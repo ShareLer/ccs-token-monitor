@@ -3,12 +3,44 @@ import XCTest
 
 final class TokenPlanTests: XCTestCase {
     func test_detectProvider_matchesKnownCodingPlanURLs() {
+        XCTAssertEqual(TokenPlanProvider.detect(baseUrl: "https://chatgpt.com/backend-api/wham/usage"), .codex)
         XCTAssertEqual(TokenPlanProvider.detect(baseUrl: "https://api.kimi.com/coding/v1"), .kimi)
         XCTAssertEqual(TokenPlanProvider.detect(baseUrl: "https://open.bigmodel.cn/api/paas/v4"), .zhipuCn)
         XCTAssertEqual(TokenPlanProvider.detect(baseUrl: "https://api.z.ai/api/paas/v4"), .zhipuEn)
         XCTAssertEqual(TokenPlanProvider.detect(baseUrl: "https://api.minimaxi.com/v1"), .minimaxCn)
         XCTAssertEqual(TokenPlanProvider.detect(baseUrl: "https://api.minimax.io/v1"), .minimaxEn)
         XCTAssertNil(TokenPlanProvider.detect(baseUrl: "https://quota.zenmux.example"))
+    }
+
+    func test_parseCodexQuota_usesRateLimitWindows() throws {
+        let queriedAt = Date(timeIntervalSince1970: 1_000)
+        let quota = try TokenPlanService.parseCodexQuota([
+            "plan_type": "plus",
+            "rate_limit": [
+                "primary_window": [
+                    "used_percent": 35,
+                    "reset_after_seconds": 300,
+                ],
+                "secondary_window": [
+                    "used_percent": 72,
+                    "reset_at": 2_000,
+                ],
+            ],
+        ], queriedAt: queriedAt)
+
+        XCTAssertEqual(quota.provider, .codex)
+        XCTAssertEqual(quota.planLabel, "plus")
+        XCTAssertEqual(quota.tier(for: .fiveHour)?.utilization ?? -1, 35, accuracy: 0.0001)
+        XCTAssertEqual(quota.tier(for: .fiveHour)?.resetsAt, Date(timeIntervalSince1970: 1_300))
+        XCTAssertEqual(quota.tier(for: .weekly)?.utilization ?? -1, 72, accuracy: 0.0001)
+        XCTAssertEqual(quota.tier(for: .weekly)?.resetsAt, Date(timeIntervalSince1970: 2_000))
+    }
+
+    func test_parseCodexQuota_rejectsMissingPrimaryWindow() {
+        XCTAssertThrowsError(try TokenPlanService.parseCodexQuota([
+            "plan_type": "plus",
+            "rate_limit": [:],
+        ]))
     }
 
     func test_parseKimiQuota_usesLimitAndRemaining() {
@@ -125,5 +157,47 @@ final class TokenPlanTests: XCTestCase {
         XCTAssertTrue(store.shouldDisplay)
         XCTAssertEqual(store.activeConfigs.map(\.id), [.zhipu])
         XCTAssertEqual(store.activeConfigs.first?.trimmedBaseUrl, "https://open.bigmodel.cn")
+    }
+
+    @MainActor
+    func test_codexConfigRequiresPersistedAccountMetadata() {
+        let loggedOut = TokenPlanConfig(id: .codex, enabled: true)
+        XCTAssertFalse(loggedOut.isConfigured)
+
+        let loggedIn = TokenPlanConfig(
+            id: .codex,
+            enabled: true,
+            codexAccount: CodexAccountConfig(
+                email: "user@example.com",
+                accountId: "account-1",
+                planType: "plus"
+            )
+        )
+        XCTAssertTrue(loggedIn.isConfigured)
+        XCTAssertEqual(loggedIn.detectedProvider, .codex)
+    }
+
+    @MainActor
+    func test_codexAccountMetadataPersistsInTokenPlanConfig() {
+        let name = "ccMonitor.codexTokenPlanPersistence.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let store = TokenPlanStore(defaults: defaults)
+        store.setConfig(TokenPlanConfig(
+            id: .codex,
+            enabled: true,
+            codexAccount: CodexAccountConfig(
+                email: "user@example.com",
+                accountId: "account-1",
+                planType: "plus"
+            )
+        ))
+
+        let restored = TokenPlanStore(defaults: defaults).config(for: .codex)
+        XCTAssertTrue(restored.enabled)
+        XCTAssertEqual(restored.codexAccount?.email, "user@example.com")
+        XCTAssertEqual(restored.codexAccount?.accountId, "account-1")
+        XCTAssertEqual(restored.codexAccount?.planType, "plus")
     }
 }

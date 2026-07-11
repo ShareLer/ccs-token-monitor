@@ -8,15 +8,20 @@ enum TokenPlanService {
         let baseUrl = config.trimmedBaseUrl
         let apiKey = config.trimmedAPIKey
         guard !baseUrl.isEmpty else { throw TokenPlanError.missingBaseURL }
-        guard !apiKey.isEmpty else { throw TokenPlanError.missingAPIKey }
         guard let provider = TokenPlanProvider.detect(baseUrl: baseUrl) else {
             throw TokenPlanError.unknownProvider
         }
         guard config.id.supports(provider) else {
             throw TokenPlanError.unknownProvider
         }
+        if provider != .codex {
+            guard !apiKey.isEmpty else { throw TokenPlanError.missingAPIKey }
+        }
 
         switch provider {
+        case .codex:
+            log.info("fetch Codex quota")
+            return try await queryCodex(baseUrl: baseUrl)
         case .kimi:
             log.info("fetch Kimi quota")
             return try await queryKimi(apiKey: apiKey)
@@ -30,6 +35,35 @@ enum TokenPlanService {
             log.info("fetch MiniMax EN quota")
             return try await queryMiniMax(apiKey: apiKey, isCN: false)
         }
+    }
+
+    static func parseCodexQuota(_ body: [String: Any],
+                                queriedAt: Date = Date()) throws -> TokenPlanQuota {
+        guard let rateLimit = dict(body["rate_limit"]),
+              let primary = dict(rateLimit["primary_window"]),
+              let primaryUsed = numeric(primary["used_percent"]) else {
+            throw TokenPlanError.parse("Codex usage 响应缺少主额度窗口")
+        }
+        var tiers: [TokenPlanTier] = []
+        tiers.append(TokenPlanTier(kind: .fiveHour,
+                                   utilization: primaryUsed,
+                                   resetsAt: codexResetDate(primary, queriedAt: queriedAt),
+                                   usedValueUSD: nil,
+                                   maxValueUSD: nil))
+        if let secondary = dict(rateLimit["secondary_window"]) {
+            guard let secondaryUsed = numeric(secondary["used_percent"]) else {
+                throw TokenPlanError.parse("Codex usage 响应中的次额度窗口无效")
+            }
+            tiers.append(TokenPlanTier(kind: .weekly,
+                                       utilization: secondaryUsed,
+                                       resetsAt: codexResetDate(secondary, queriedAt: queriedAt),
+                                       usedValueUSD: nil,
+                                       maxValueUSD: nil))
+        }
+        return TokenPlanQuota(provider: .codex,
+                              planLabel: string(body["plan_type"]),
+                              tiers: tiers,
+                              queriedAt: queriedAt)
     }
 
     static func parseKimiQuota(_ body: [String: Any],
@@ -176,6 +210,53 @@ enum TokenPlanService {
         return parseKimiQuota(body, provider: .kimi)
     }
 
+    private static func queryCodex(baseUrl: String) async throws -> TokenPlanQuota {
+        let credentials = try await CodexOAuthService.validCredentials()
+        do {
+            return try await requestCodex(baseUrl: baseUrl, credentials: credentials)
+        } catch let error as TokenPlanError {
+            guard case .authentication = error else { throw error }
+            let refreshed = try await CodexOAuthService.validCredentials(forceRefresh: true)
+            return try await requestCodex(baseUrl: baseUrl, credentials: refreshed)
+        }
+    }
+
+    private static func requestCodex(baseUrl: String,
+                                     credentials: CodexOAuthCredentials) async throws -> TokenPlanQuota {
+        guard let url = URL(string: baseUrl) else {
+            throw TokenPlanError.missingBaseURL
+        }
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(credentials.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let accountId = credentials.accountId?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !accountId.isEmpty {
+            request.setValue(accountId, forHTTPHeaderField: "ChatGPT-Account-Id")
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw TokenPlanError.network(error.localizedDescription)
+        }
+        guard let http = response as? HTTPURLResponse else {
+            throw TokenPlanError.api("响应格式异常")
+        }
+        if http.statusCode == 401 || http.statusCode == 403 {
+            throw TokenPlanError.authentication("HTTP \(http.statusCode)")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw TokenPlanError.api("HTTP \(http.statusCode)")
+        }
+        guard let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw TokenPlanError.parse("无法解析 Codex usage 响应")
+        }
+        return try parseCodexQuota(body)
+    }
+
     private static func queryZhipu(baseUrl: String,
                                    apiKey: String,
                                    provider: TokenPlanProvider) async throws -> TokenPlanQuota {
@@ -267,6 +348,16 @@ enum TokenPlanService {
     private static func utilization(limit: Double, remaining: Double) -> Double {
         guard limit > 0 else { return 0 }
         return max(limit - remaining, 0) / limit * 100
+    }
+
+    private static func codexResetDate(_ window: [String: Any], queriedAt: Date) -> Date? {
+        if let resetAt = int64(window["reset_at"]) {
+            return dateFromTimestamp(resetAt)
+        }
+        guard let resetAfter = int64(window["reset_after_seconds"]), resetAfter >= 0 else {
+            return nil
+        }
+        return queriedAt.addingTimeInterval(TimeInterval(resetAfter))
     }
 
     private static func dict(_ value: Any?) -> [String: Any]? {

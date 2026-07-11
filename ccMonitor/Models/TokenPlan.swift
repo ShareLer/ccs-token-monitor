@@ -1,6 +1,7 @@
 import Foundation
 
 enum TokenPlanProvider: String, Codable, Equatable, Sendable {
+    case codex
     case kimi
     case zhipuCn
     case zhipuEn
@@ -9,6 +10,7 @@ enum TokenPlanProvider: String, Codable, Equatable, Sendable {
 
     var displayName: String {
         switch self {
+        case .codex: return "Codex"
         case .kimi: return "Kimi For Coding"
         case .zhipuCn: return "智谱 GLM"
         case .zhipuEn: return "Zhipu GLM"
@@ -18,6 +20,9 @@ enum TokenPlanProvider: String, Codable, Equatable, Sendable {
 
     static func detect(baseUrl: String) -> TokenPlanProvider? {
         let url = baseUrl.lowercased()
+        if url.contains("chatgpt.com/backend-api/wham/usage") {
+            return .codex
+        }
         if url.contains("api.kimi.com/coding") {
             return .kimi
         }
@@ -38,6 +43,7 @@ enum TokenPlanProvider: String, Codable, Equatable, Sendable {
 }
 
 enum TokenPlanConfigID: String, Codable, CaseIterable, Identifiable, Sendable {
+    case codex
     case kimi
     case zhipu
     case minimax
@@ -46,6 +52,7 @@ enum TokenPlanConfigID: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var displayName: String {
         switch self {
+        case .codex: return "Codex"
         case .kimi: return "Kimi"
         case .zhipu: return "智谱"
         case .minimax: return "MiniMax"
@@ -54,6 +61,7 @@ enum TokenPlanConfigID: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var subtitle: String {
         switch self {
+        case .codex: return "OpenAI Codex"
         case .kimi: return "Kimi For Coding"
         case .zhipu: return "Zhipu GLM / 智谱"
         case .minimax: return "MiniMax"
@@ -62,6 +70,7 @@ enum TokenPlanConfigID: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var defaultBaseURL: String {
         switch self {
+        case .codex: return "https://chatgpt.com/backend-api/wham/usage"
         case .kimi: return "https://api.kimi.com/coding"
         case .zhipu: return "https://open.bigmodel.cn"
         case .minimax: return "https://api.minimaxi.com"
@@ -70,6 +79,8 @@ enum TokenPlanConfigID: String, Codable, CaseIterable, Identifiable, Sendable {
 
     func supports(_ provider: TokenPlanProvider) -> Bool {
         switch (self, provider) {
+        case (.codex, .codex):
+            return true
         case (.kimi, .kimi):
             return true
         case (.zhipu, .zhipuCn), (.zhipu, .zhipuEn):
@@ -83,6 +94,8 @@ enum TokenPlanConfigID: String, Codable, CaseIterable, Identifiable, Sendable {
 
     static func from(provider: TokenPlanProvider) -> TokenPlanConfigID {
         switch provider {
+        case .codex:
+            return .codex
         case .kimi:
             return .kimi
         case .zhipuCn, .zhipuEn:
@@ -93,20 +106,29 @@ enum TokenPlanConfigID: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
+struct CodexAccountConfig: Codable, Equatable, Sendable {
+    var email: String
+    var accountId: String?
+    var planType: String?
+}
+
 struct TokenPlanConfig: Codable, Equatable, Identifiable, Sendable {
     var id: TokenPlanConfigID
     var enabled: Bool
     var baseUrl: String
     var apiKey: String
+    var codexAccount: CodexAccountConfig?
 
     init(id: TokenPlanConfigID,
          enabled: Bool = false,
          baseUrl: String = "",
-         apiKey: String = "") {
+         apiKey: String = "",
+         codexAccount: CodexAccountConfig? = nil) {
         self.id = id
         self.enabled = enabled
         self.baseUrl = baseUrl
         self.apiKey = apiKey
+        self.codexAccount = codexAccount
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -114,6 +136,7 @@ struct TokenPlanConfig: Codable, Equatable, Identifiable, Sendable {
         case enabled
         case baseUrl
         case apiKey
+        case codexAccount
     }
 
     init(from decoder: Decoder) throws {
@@ -122,6 +145,7 @@ struct TokenPlanConfig: Codable, Equatable, Identifiable, Sendable {
         enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
         baseUrl = try container.decodeIfPresent(String.self, forKey: .baseUrl) ?? ""
         apiKey = try container.decodeIfPresent(String.self, forKey: .apiKey) ?? ""
+        codexAccount = try container.decodeIfPresent(CodexAccountConfig.self, forKey: .codexAccount)
     }
 
     var trimmedBaseUrl: String {
@@ -144,7 +168,11 @@ struct TokenPlanConfig: Codable, Equatable, Identifiable, Sendable {
     }
 
     var isConfigured: Bool {
-        enabled && !trimmedAPIKey.isEmpty && isProviderCompatible
+        guard enabled && isProviderCompatible else { return false }
+        if id == .codex {
+            return codexAccount != nil
+        }
+        return !trimmedAPIKey.isEmpty
     }
 }
 

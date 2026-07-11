@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum ProgressBarGeometry {
+    static func fillWidth(fraction: Double, totalWidth: CGFloat) -> CGFloat {
+        max(0, min(1, fraction)) * max(0, totalWidth)
+    }
+}
+
 /// 胶囊进度条（UsageBoard 风格）：主色淡底 + 主色填充 + 居中加粗文字。
 struct UsageProgressBar: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -12,20 +18,16 @@ struct UsageProgressBar: View {
 
     var body: some View {
         GeometryReader { geo in
-            let ratio = max(0, min(1, fraction))
+            let width = ProgressBarGeometry.fillWidth(fraction: fraction, totalWidth: geo.size.width)
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous)
                     .fill(trackFill)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous)
-                            .stroke(trackStroke, lineWidth: appBackgroundStyle == .glass ? 0.7 : 0)
-                    )
-                RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous)
+                Rectangle()
                     .fill(fillStyle)
-                    .frame(width: ratio * geo.size.width)
+                    .frame(width: width)
                     .overlay(alignment: .top) {
-                        if appBackgroundStyle == .glass && ratio > 0 {
-                            RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous)
+                        if appBackgroundStyle == .glass && width > 0 {
+                            Rectangle()
                                 .fill(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.28))
                                 .frame(height: 1)
                         }
@@ -39,6 +41,10 @@ struct UsageProgressBar: View {
         }
         .frame(height: height)
         .clipShape(RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: UB.Radius.bar, style: .continuous)
+                .stroke(trackStroke, lineWidth: appBackgroundStyle == .glass ? 0.7 : 0)
+        )
     }
 
     private var trackFill: Color {

@@ -584,22 +584,26 @@ struct SettingsView: View {
             }
 
             if config.enabled {
-                labeledTokenPlanField("API Key") {
-                    SecureField("sk-...", text: tokenPlanAPIKeyBinding(id))
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                HStack {
-                    Label(providerText(for: config), systemImage: providerIcon(for: config))
-                        .font(UB.Font.caption)
-                        .foregroundStyle(providerColor(for: config))
-                    Spacer()
-                    Button {
-                        Task { await tokenPlan.refresh() }
-                    } label: {
-                        Label("测试/刷新", systemImage: "arrow.clockwise")
+                if id == .codex {
+                    codexTokenPlanControls(config)
+                } else {
+                    labeledTokenPlanField("API Key") {
+                        SecureField("sk-...", text: tokenPlanAPIKeyBinding(id))
+                            .textFieldStyle(.roundedBorder)
                     }
-                    .disabled(!config.isConfigured || tokenPlan.state(for: id) == .loading)
+
+                    HStack {
+                        Label(providerText(for: config), systemImage: providerIcon(for: config))
+                            .font(UB.Font.caption)
+                            .foregroundStyle(providerColor(for: config))
+                        Spacer()
+                        Button {
+                            Task { await tokenPlan.refresh() }
+                        } label: {
+                            Label("测试/刷新", systemImage: "arrow.clockwise")
+                        }
+                        .disabled(!config.isConfigured || tokenPlan.state(for: id) == .loading)
+                    }
                 }
             }
         }
@@ -614,14 +618,54 @@ struct SettingsView: View {
         Binding(
             get: { tokenPlan.config(for: id).enabled },
             set: { enabled in
-                var config = tokenPlan.config(for: id)
-                config.enabled = enabled
-                tokenPlan.setConfig(config)
-                if !enabled {
-                    Task { await tokenPlan.refresh() }
-                }
+                tokenPlan.setEnabled(id, enabled: enabled)
             }
         )
+    }
+
+    @ViewBuilder
+    private func codexTokenPlanControls(_ config: TokenPlanConfig) -> some View {
+        if let account = config.codexAccount {
+            HStack(spacing: UB.Spacing.s) {
+                Label(account.email.isEmpty ? "Codex 已登录" : account.email,
+                      systemImage: "person.crop.circle.badge.checkmark")
+                    .font(UB.Font.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                if let planType = account.planType, !planType.isEmpty {
+                    Text(planType)
+                        .font(UB.Font.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Button {
+                    tokenPlan.startCodexLogin()
+                } label: {
+                    Label("重新登录", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .disabled(tokenPlan.state(for: .codex) == .loading)
+                Button {
+                    Task { await tokenPlan.refresh() }
+                } label: {
+                    Label("测试/刷新", systemImage: "arrow.clockwise")
+                }
+                .disabled(!config.isConfigured || tokenPlan.state(for: .codex) == .loading)
+            }
+        } else {
+            HStack {
+                Label("未登录", systemImage: "person.crop.circle.badge.exclamationmark")
+                    .font(UB.Font.caption)
+                    .foregroundStyle(.orange)
+                Spacer()
+                Button {
+                    tokenPlan.startCodexLogin()
+                } label: {
+                    Label("登录 Codex", systemImage: "person.crop.circle.badge.plus")
+                }
+                .disabled(tokenPlan.state(for: .codex) == .loading)
+            }
+        }
     }
 
     private func tokenPlanAPIKeyBinding(_ id: TokenPlanConfigID) -> Binding<String> {
@@ -657,14 +701,15 @@ struct SettingsView: View {
                 Text("未查询")
                     .foregroundStyle(.secondary)
             case .loading:
-                Text("查询中")
+                Text(id == .codex && tokenPlan.config(for: id).codexAccount == nil ? "登录中" : "查询中")
                     .foregroundStyle(.secondary)
             case .loaded:
                 Text("已更新")
                     .foregroundStyle(UB.Palette.balance)
-            case .failed:
+            case .failed(let message):
                 Text("失败")
                     .foregroundStyle(.red)
+                    .help(message)
             }
         }
         .font(UB.Font.caption)

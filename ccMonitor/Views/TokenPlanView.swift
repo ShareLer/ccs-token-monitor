@@ -206,20 +206,16 @@ private struct TokenPlanProgressBar: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let width = max(0, min(proxy.size.width * fraction, proxy.size.width))
+            let width = ProgressBarGeometry.fillWidth(fraction: fraction, totalWidth: proxy.size.width)
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(trackFill)
-                    .overlay(
-                        Capsule()
-                            .stroke(trackStroke, lineWidth: appBackgroundStyle == .glass ? 0.7 : 0)
-                    )
-                Capsule()
+                Rectangle()
                     .fill(fillStyle)
                     .frame(width: width)
                     .overlay(alignment: .top) {
                         if appBackgroundStyle == .glass && width > 0 {
-                            Capsule()
+                            Rectangle()
                                 .fill(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.26))
                                 .frame(height: 1)
                         }
@@ -232,6 +228,11 @@ private struct TokenPlanProgressBar: View {
             }
         }
         .frame(height: TokenPlanLayout.progressHeight)
+        .clipShape(Capsule())
+        .overlay(
+            Capsule()
+                .stroke(trackStroke, lineWidth: appBackgroundStyle == .glass ? 0.7 : 0)
+        )
     }
 
     private var trackFill: Color {
